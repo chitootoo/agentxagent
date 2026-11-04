@@ -1,0 +1,201 @@
+syntax = "proto3";
+
+package axa.v1;
+
+// TaskPriority follows the axa convention: P0 blocks others, P1 is important,
+// P2 is an optimization or long-term improvement.
+enum TaskPriority {
+  TASK_PRIORITY_UNSPECIFIED = 0;
+  TASK_PRIORITY_P0 = 1;
+  TASK_PRIORITY_P1 = 2;
+  TASK_PRIORITY_P2 = 3;
+}
+
+// TaskStatus maps directly to the .axa/ directory that owns the task file.
+enum TaskStatus {
+  TASK_STATUS_UNSPECIFIED = 0;
+  TASK_STATUS_BACKLOG = 1;
+  TASK_STATUS_TODO = 2;
+  TASK_STATUS_DOING = 3;
+  TASK_STATUS_DONE = 4;
+}
+
+message Project {
+  string id = 1;
+  string name = 2;
+  string path = 3;
+  string axa_path = 4;
+  bool exists = 5;
+  int32 backlog_count = 6;
+  int32 todo_count = 7;
+  int32 doing_count = 8;
+  int32 done_count = 9;
+  int32 total_tasks = 10;
+}
+
+message Task {
+  string id = 1;
+  string title = 2;
+  TaskPriority priority = 3;
+  TaskStatus status = 4;
+  string body = 5;
+  string filename = 6;
+  string file_path = 7;
+  string claimed_by = 8;
+  string claimed_at = 9;
+  string created_at = 10;
+  string updated_at = 11;
+  repeated string tags = 12;
+  string created_by = 13;
+  string completed_by = 14;
+  string completed_at = 15;
+}
+
+message Activity {
+  int32 id = 1;
+  string project_id = 2;
+  string task_id = 3;
+  string task_title = 4;
+  string action = 5;
+  string actor = 6;
+  string created_at = 7;
+}
+
+message ListProjectsRequest {}
+
+message ListProjectsResponse {
+  repeated Project projects = 1;
+}
+
+message RegisterProjectRequest {
+  string path = 1;
+  string name = 2;
+  // Create the .axa/ contract first when the directory is not managed yet.
+  bool initialize = 3;
+}
+
+message RegisterProjectResponse {
+  Project project = 1;
+}
+
+message RemoveProjectRequest {
+  string project_id = 1;
+}
+
+message RemoveProjectResponse {}
+
+message ListTasksRequest {
+  string project_id = 1;
+  // Empty means every status.
+  repeated TaskStatus statuses = 2;
+  // Unspecified means every priority.
+  TaskPriority priority = 3;
+  string claimed_by = 4;
+}
+
+message ListTasksResponse {
+  Project project = 1;
+  repeated Task tasks = 2;
+}
+
+message GetTaskRequest {
+  string project_id = 1;
+  string task_id = 2;
+}
+
+message GetTaskResponse {
+  Task task = 1;
+}
+
+message CreateTaskRequest {
+  string project_id = 1;
+  string title = 2;
+  string body = 3;
+  TaskPriority priority = 4;
+  TaskStatus status = 5;
+  repeated string tags = 6;
+  string actor = 7;
+}
+
+message CreateTaskResponse {
+  Task task = 1;
+}
+
+message ApproveTaskRequest {
+  string project_id = 1;
+  string task_id = 2;
+  string actor = 3;
+}
+
+message ApproveTaskResponse {
+  Task task = 1;
+}
+
+message ClaimTaskRequest {
+  string project_id = 1;
+  // Ignored when next is true.
+  string task_id = 2;
+  bool next = 3;
+  string actor = 4;
+}
+
+message ClaimTaskResponse {
+  Task task = 1;
+}
+
+message ReleaseTaskRequest {
+  string project_id = 1;
+  string task_id = 2;
+  string actor = 3;
+}
+
+message ReleaseTaskResponse {
+  Task task = 1;
+}
+
+message CompleteTaskRequest {
+  string project_id = 1;
+  string task_id = 2;
+  string actor = 3;
+}
+
+message CompleteTaskResponse {
+  Task task = 1;
+}
+
+message ReclaimStaleTasksRequest {
+  string project_id = 1;
+  uint32 older_than_seconds = 2;
+  string actor = 3;
+}
+
+message ReclaimStaleTasksResponse {
+  repeated Task reclaimed = 1;
+  int32 skipped = 2;
+}
+
+message ListActivityRequest {
+  // Empty returns activity across every registered project.
+  string project_id = 1;
+  int32 limit = 2;
+}
+
+message ListActivityResponse {
+  repeated Activity activities = 1;
+}
+
+// TaskService is the single RPC surface used by the web console.
+service TaskService {
+  rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
+  rpc RegisterProject(RegisterProjectRequest) returns (RegisterProjectResponse);
+  rpc RemoveProject(RemoveProjectRequest) returns (RemoveProjectResponse);
+  rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
+  rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
+  rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
+  rpc ApproveTask(ApproveTaskRequest) returns (ApproveTaskResponse);
+  rpc ClaimTask(ClaimTaskRequest) returns (ClaimTaskResponse);
+  rpc ReleaseTask(ReleaseTaskRequest) returns (ReleaseTaskResponse);
+  rpc CompleteTask(CompleteTaskRequest) returns (CompleteTaskResponse);
+  rpc ReclaimStaleTasks(ReclaimStaleTasksRequest) returns (ReclaimStaleTasksResponse);
+  rpc ListActivity(ListActivityRequest) returns (ListActivityResponse);
+}

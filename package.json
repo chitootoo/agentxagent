@@ -1,0 +1,32 @@
+{
+  "name": "agent-x-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "axa — a local-first task hub for humans and AI agents",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm build:packages && pnpm --filter @axa/console build",
+    "build:packages": "pnpm --filter @axa/proto build && pnpm --filter @axa/core build && pnpm --filter @axa/cli build",
+    "dev": "pnpm build:packages && pnpm --filter @axa/console dev",
+    "dev:console": "pnpm --filter @axa/console dev",
+    "axa": "tsx packages/cli/src/index.ts",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "proto:generate": "pnpm --filter @axa/proto generate"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.5",
+    "@types/node": "^24.10.1",
+    "tsup": "^8.5.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

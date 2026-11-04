@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+
+# Local axa runtime state
+.axa/.lock/
+.axa/**/.lock/
+.axa/*.db
+.axa/*.db-*
