@@ -1,4 +1,4 @@
-import { initProject, registerProject, toAbsolutePath } from "@axa/core";
+import { initProject, registerProject, toAbsolutePath } from "@contagxt/axa-core";
 import type { Command } from "commander";
 import pc from "picocolors";
 

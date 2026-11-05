@@ -1,4 +1,4 @@
-import { reclaimStaleTasks } from "@axa/core";
+import { reclaimStaleTasks } from "@contagxt/axa-core";
 import type { Command } from "commander";
 import pc from "picocolors";
 import { type ProjectOption, parseDuration, resolveProject } from "../context.js";

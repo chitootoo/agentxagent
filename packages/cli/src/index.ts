@@ -1,4 +1,4 @@
-import { isAxaError } from "@axa/core";
+import { isAxaError } from "@contagxt/axa-core";
 import { Command } from "commander";
 import pc from "picocolors";
 import { registerApproveCommand } from "./commands/approve.js";

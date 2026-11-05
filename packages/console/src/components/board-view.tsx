@@ -1,6 +1,6 @@
 "use client";
 
-import { type Activity, type Project, type Task, TaskStatus } from "@axa/proto";
+import { type Activity, type Project, type Task, TaskStatus } from "@contagxt/axa-proto";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { taskClient } from "@/lib/client";

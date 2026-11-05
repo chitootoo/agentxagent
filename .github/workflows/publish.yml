@@ -43,7 +43,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/packs"
           for dir in proto core cli; do
-            pnpm --filter "@axa/$dir" pack --pack-destination "$RUNNER_TEMP/packs"
+            pnpm --filter "@contagxt/axa-$dir" pack --pack-destination "$RUNNER_TEMP/packs"
           done
 
       - name: Publish with OIDC
@@ -52,6 +52,6 @@ jobs:
         run: |
           for dir in proto core cli; do
             version=$(node -p "require('./packages/$dir/package.json').version")
-            npm publish "$RUNNER_TEMP/packs/axa-$dir-$version.tgz" \
+            npm publish "$RUNNER_TEMP/packs/contagxt-axa-$dir-$version.tgz" \
               --access public --provenance --tag "$NPM_TAG"
           done

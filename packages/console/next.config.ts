@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@axa/core", "@axa/proto"],
+  transpilePackages: ["@contagxt/axa-core", "@contagxt/axa-proto"],
   serverExternalPackages: ["better-sqlite3"],
 };
 

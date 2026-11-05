@@ -1,5 +1,5 @@
 {
-  "name": "@axa/cli",
+  "name": "@contagxt/axa-cli",
   "version": "0.1.0",
   "description": "axa command line interface for humans and AI agents",
   "license": "MIT",
@@ -24,7 +24,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@axa/core": "workspace:*",
+    "@contagxt/axa-core": "workspace:*",
     "commander": "^14.0.2",
     "picocolors": "^1.1.1"
   },

@@ -1,4 +1,4 @@
-import { type Task, TaskStatus } from "@axa/proto";
+import { type Task, TaskStatus } from "@contagxt/axa-proto";
 import { formatRelativeTime } from "@/lib/format";
 import { priorityLabel, statusMeta } from "@/lib/task-meta";
 import { CheckIcon, PlayIcon, UndoIcon } from "./icons";

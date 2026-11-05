@@ -1,4 +1,4 @@
-import { TaskPriority, TaskStatus } from "@axa/proto";
+import { TaskPriority, TaskStatus } from "@contagxt/axa-proto";
 
 export const PRIORITY_META: Record<TaskPriority, { label: string; hint: string }> = {
   [TaskPriority.UNSPECIFIED]: { label: "P?", hint: "未设置" },

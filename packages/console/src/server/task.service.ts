@@ -1,3 +1,5 @@
+import { create } from "@bufbuild/protobuf";
+import type { ServiceImpl } from "@connectrpc/connect";
 import {
   AxaError,
   approveTask,
@@ -15,7 +17,7 @@ import {
   releaseTask,
   removeRegisteredProject,
   scanTasks,
-} from "@axa/core";
+} from "@contagxt/axa-core";
 import {
   type Activity,
   ActivitySchema,
@@ -52,9 +54,7 @@ import {
   TaskSchema,
   type TaskService,
   TaskStatus,
-} from "@axa/proto";
-import { create } from "@bufbuild/protobuf";
-import type { ServiceImpl } from "@connectrpc/connect";
+} from "@contagxt/axa-proto";
 import { requireProjectSummary } from "../config/projects";
 import { listActivityRows, recordActivity } from "./db/index";
 

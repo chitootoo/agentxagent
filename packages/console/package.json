@@ -1,5 +1,5 @@
 {
-  "name": "@axa/console",
+  "name": "@contagxt/axa-console",
   "version": "0.1.0",
   "private": true,
   "description": "Web console for axa multi-agent task boards",
@@ -13,8 +13,8 @@
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
-    "@axa/core": "workspace:*",
-    "@axa/proto": "workspace:*",
+    "@contagxt/axa-core": "workspace:*",
+    "@contagxt/axa-proto": "workspace:*",
     "@bufbuild/protobuf": "^2.16.0",
     "@connectrpc/connect": "^2.3.0",
     "@connectrpc/connect-web": "^2.3.0",

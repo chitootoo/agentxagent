@@ -1,5 +1,5 @@
-import { type AxaError, isAxaError } from "@axa/core";
 import { Code, ConnectError } from "@connectrpc/connect";
+import { type AxaError, isAxaError } from "@contagxt/axa-core";
 
 const CODE_MAP: Record<AxaError["code"], Code> = {
   NOT_FOUND: Code.NotFound,

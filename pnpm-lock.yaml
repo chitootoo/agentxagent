@@ -184,7 +184,7 @@ importers:
 
   packages/cli:
     dependencies:
-      '@axa/core':
+      '@contagxt/axa-core':
         specifier: workspace:*
         version: link:../core
       commander:
@@ -209,12 +209,6 @@ importers:
 
   packages/console:
     dependencies:
-      '@axa/core':
-        specifier: workspace:*
-        version: link:../core
-      '@axa/proto':
-        specifier: workspace:*
-        version: link:../proto
       '@bufbuild/protobuf':
         specifier: ^2.16.0
         version: 2.16.0
@@ -224,6 +218,12 @@ importers:
       '@connectrpc/connect-web':
         specifier: ^2.3.0
         version: 2.3.0(@bufbuild/protobuf@2.16.0)(@connectrpc/connect@2.3.0(@bufbuild/protobuf@2.16.0))
+      '@contagxt/axa-core':
+        specifier: workspace:*
+        version: link:../core
+      '@contagxt/axa-proto':
+        specifier: workspace:*
+        version: link:../proto
       better-sqlite3:
         specifier: ^13.0.3
         version: 13.0.3

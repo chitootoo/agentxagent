@@ -1,4 +1,4 @@
-import { releaseTask } from "@axa/core";
+import { releaseTask } from "@contagxt/axa-core";
 import type { Command } from "commander";
 import pc from "picocolors";
 import { type ProjectOption, resolveProject } from "../context.js";

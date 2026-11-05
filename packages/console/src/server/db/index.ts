@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { getAxaHome } from "@axa/core";
+import { getAxaHome } from "@contagxt/axa-core";
 import Database from "better-sqlite3";
 import { desc, eq } from "drizzle-orm";
 import { type BetterSQLite3Database, drizzle } from "drizzle-orm/better-sqlite3";

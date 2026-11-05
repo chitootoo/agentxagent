@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
-import type { TaskPriority } from "@axa/core";
-import { createTask } from "@axa/core";
+import type { TaskPriority } from "@contagxt/axa-core";
+import { createTask } from "@contagxt/axa-core";
 import type { Command } from "commander";
 import pc from "picocolors";
 import { type ProjectOption, resolveProject } from "../context.js";

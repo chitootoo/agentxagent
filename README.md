@@ -54,7 +54,7 @@ pnpm dev
 在仓库内可以直接使用 `pnpm axa <command>`。如需全局命令：
 
 ```bash
-pnpm --filter @axa/cli build
+pnpm --filter @contagxt/axa-cli build
 cd packages/cli
 pnpm link --global
 axa --help
@@ -128,7 +128,7 @@ created_by: Haoda
 - `/projects/[id]/new` — 任务创建器
 - `/activity` — 控制台操作时间线
 
-前端通过 Connect Web transport 调用 `/api`，服务端直接复用 `@axa/core`，因此控制台与 CLI 的行为完全一致。活动日志位于 `~/.axa/console.db`（可用 `AXA_CONSOLE_DB` 覆盖），只用于审计展示，不参与任务状态判定。
+前端通过 Connect Web transport 调用 `/api`，服务端直接复用 `@contagxt/axa-core`，因此控制台与 CLI 的行为完全一致。活动日志位于 `~/.axa/console.db`（可用 `AXA_CONSOLE_DB` 覆盖），只用于审计展示，不参与任务状态判定。
 
 ### 环境变量
 

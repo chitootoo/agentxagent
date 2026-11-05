@@ -1,6 +1,6 @@
-import { TaskService } from "@axa/proto";
 import { createConnectRouter, type Interceptor } from "@connectrpc/connect";
 import { createFetchHandler } from "@connectrpc/connect/protocol";
+import { TaskService } from "@contagxt/axa-proto";
 import { toConnectError } from "./errors";
 import { taskServiceImpl } from "./task.service";
 

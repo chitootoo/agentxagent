@@ -1,4 +1,4 @@
-import { claimTask } from "@axa/core";
+import { claimTask } from "@contagxt/axa-core";
 import type { Command } from "commander";
 import pc from "picocolors";
 import { type ProjectOption, resolveAgent, resolveProject } from "../context.js";

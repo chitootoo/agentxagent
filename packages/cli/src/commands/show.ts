@@ -1,4 +1,4 @@
-import { getTask } from "@axa/core";
+import { getTask } from "@contagxt/axa-core";
 import type { Command } from "commander";
 import { type ProjectOption, resolveProject } from "../context.js";
 import { printTask, taskJson } from "../format.js";

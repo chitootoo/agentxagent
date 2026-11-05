@@ -1,5 +1,5 @@
-import type { TaskPriority, TaskStatus } from "@axa/core";
-import { scanTasks, TASK_PRIORITIES, TASK_STATUSES } from "@axa/core";
+import type { TaskPriority, TaskStatus } from "@contagxt/axa-core";
+import { scanTasks, TASK_PRIORITIES, TASK_STATUSES } from "@contagxt/axa-core";
 import type { Command } from "commander";
 import pc from "picocolors";
 import { type ProjectOption, resolveProject } from "../context.js";

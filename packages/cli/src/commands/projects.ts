@@ -3,7 +3,7 @@ import {
   registerProject,
   removeRegisteredProject,
   setDefaultProject,
-} from "@axa/core";
+} from "@contagxt/axa-core";
 import type { Command } from "commander";
 import pc from "picocolors";
 import { printProjects } from "../format.js";

@@ -1,4 +1,4 @@
-import type { ListProjectsResult, Task, TaskPriority, TaskStatus } from "@axa/core";
+import type { ListProjectsResult, Task, TaskPriority, TaskStatus } from "@contagxt/axa-core";
 import pc from "picocolors";
 
 const STATUS_COLORS: Record<TaskStatus, (value: string) => string> = {

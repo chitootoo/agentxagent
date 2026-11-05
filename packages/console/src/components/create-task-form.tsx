@@ -1,6 +1,6 @@
 "use client";
 
-import { type Project, TaskPriority, TaskStatus } from "@axa/proto";
+import { type Project, TaskPriority, TaskStatus } from "@contagxt/axa-proto";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";

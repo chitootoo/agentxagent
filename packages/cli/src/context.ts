@@ -1,4 +1,4 @@
-import { AxaError, resolveCliProject } from "@axa/core";
+import { AxaError, resolveCliProject } from "@contagxt/axa-core";
 
 export interface ProjectOption {
   project?: string;
