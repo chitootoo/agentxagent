@@ -1,0 +1,57 @@
+name: Publish to npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: npm dist-tag
+        required: true
+        default: latest
+        type: choice
+        options:
+          - latest
+          - next
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.16.1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@11
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build:packages
+
+      - name: Pack workspaces
+        run: |
+          mkdir -p "$RUNNER_TEMP/packs"
+          for dir in proto core cli; do
+            pnpm --filter "@axa/$dir" pack --pack-destination "$RUNNER_TEMP/packs"
+          done
+
+      - name: Publish with OIDC
+        env:
+          NPM_TAG: ${{ inputs.tag }}
+        run: |
+          for dir in proto core cli; do
+            version=$(node -p "require('./packages/$dir/package.json').version")
+            npm publish "$RUNNER_TEMP/packs/axa-$dir-$version.tgz" \
+              --access public --provenance --tag "$NPM_TAG"
+          done
