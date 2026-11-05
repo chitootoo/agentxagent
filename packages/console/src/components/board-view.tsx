@@ -1,6 +1,12 @@
 "use client";
 
-import { type Activity, type Project, type Task, TaskStatus } from "@contagxt/axa-proto";
+import {
+  type Activity,
+  ConversationRole,
+  type Project,
+  type Task,
+  TaskStatus,
+} from "@contagxt/axa-proto";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { taskClient } from "@/lib/client";
@@ -177,6 +183,21 @@ export function BoardView({ projectId }: BoardViewProps) {
     }
   }
 
+  async function commentTask(task: Task, message: string): Promise<boolean> {
+    return runAction(
+      task.id,
+      () =>
+        taskClient.appendTaskMessage({
+          projectId,
+          taskId: task.id,
+          role: ConversationRole.USER,
+          message,
+          actor,
+        }),
+      `已追加需求 #${task.id}，任务已回到 Todo`,
+    );
+  }
+
   async function releaseTask(task: Task) {
     await runAction(
       task.id,
@@ -345,6 +366,7 @@ export function BoardView({ projectId }: BoardViewProps) {
                       key={task.id}
                       onApprove={(item) => void approveTask(item)}
                       onAccept={(item) => void acceptTask(item)}
+                      onComment={commentTask}
                       onComplete={(item) => void completeTask(item)}
                       onCopyInstruction={(item) => void copyInstruction(item)}
                       onDelete={deleteTask}

@@ -4,14 +4,30 @@ export type TaskStatus = (typeof TASK_STATUSES)[number];
 export const TASK_PRIORITIES = ["P0", "P1", "P2"] as const;
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
 
+export const CONVERSATION_ROLES = ["user", "agent"] as const;
+export type ConversationRole = (typeof CONVERSATION_ROLES)[number];
+
+export interface ConversationEntry {
+  seq: string;
+  role: ConversationRole;
+  title: string;
+  filename: string;
+  filePath: string;
+  body: string;
+}
+
 export interface Task {
   id: string;
   title: string;
   priority: TaskPriority;
   status: TaskStatus;
+  /** Latest user message, kept as the current task brief for clients. */
   body: string;
+  /** Task directory name, or a legacy `.md` filename before migration. */
   filename: string;
+  /** Task directory, or a legacy `.md` file before migration. */
   filePath: string;
+  metadataPath: string;
   projectRoot: string;
   reviewRequired: boolean;
   claimedBy?: string;
@@ -20,6 +36,9 @@ export interface Task {
   updatedAt: string;
   tags: string[];
   extra: Record<string, unknown>;
+  conversation: ConversationEntry[];
+  /** True for tasks that still use the pre-018 single Markdown file layout. */
+  legacy: boolean;
 }
 
 export interface ProjectInfo {
@@ -55,9 +74,19 @@ export interface CreateTaskInput {
   body?: string;
   priority?: TaskPriority;
   status?: Extract<TaskStatus, "backlog" | "todo">;
+  /** Defaults to true: finished work waits for human acceptance. */
   reviewRequired?: boolean;
   tags?: string[];
   extra?: Record<string, unknown>;
+  actor?: string;
+}
+
+export interface AppendTaskMessageInput {
+  projectRoot: string;
+  taskId: string;
+  role: ConversationRole;
+  message: string;
+  title?: string;
   actor?: string;
 }
 

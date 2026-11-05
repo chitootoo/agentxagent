@@ -14,12 +14,16 @@ export type { AxaErrorCode } from "./errors.js";
 export { AxaError, isAxaError } from "./errors.js";
 export {
   booleanValue,
+  buildMessageFilename,
   buildTaskFilename,
+  buildTaskFolderName,
   canonicalTaskId,
   humanizeDescription,
   parseFrontmatterData,
+  parseMessageFilename,
   parseTaskDocument,
   parseTaskFilename,
+  parseTaskFolderName,
   serializeTaskDocument,
   slugifyTitle,
   stringifyFrontmatterData,
@@ -36,8 +40,10 @@ export {
 } from "./paths.js";
 export {
   acceptTask,
+  appendTaskMessage,
   approveTask,
   claimTask,
+  commentTask,
   completeTask,
   createTask,
   deleteTask,
@@ -50,12 +56,17 @@ export {
   releaseTask,
   resolveProject,
   scanTasks,
+  summarizeTask,
+  TASK_METADATA_FILE,
   updateTask,
   writeTaskBody,
 } from "./tasks.js";
 export type {
+  AppendTaskMessageInput,
   AxaConfig,
   ClaimTaskInput,
+  ConversationEntry,
+  ConversationRole,
   CreateTaskInput,
   InitProjectOptions,
   ListProjectsResult,
@@ -69,4 +80,4 @@ export type {
   TaskStatus,
   UpdateTaskInput,
 } from "./types.js";
-export { TASK_PRIORITIES, TASK_STATUSES } from "./types.js";
+export { CONVERSATION_ROLES, TASK_PRIORITIES, TASK_STATUSES } from "./types.js";

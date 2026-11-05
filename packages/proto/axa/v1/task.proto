@@ -11,6 +11,22 @@ enum TaskPriority {
   TASK_PRIORITY_P2 = 3;
 }
 
+// ConversationRole distinguishes the human requirement from the agent summary.
+enum ConversationRole {
+  CONVERSATION_ROLE_UNSPECIFIED = 0;
+  CONVERSATION_ROLE_USER = 1;
+  CONVERSATION_ROLE_AGENT = 2;
+}
+
+message ConversationEntry {
+  string seq = 1;
+  ConversationRole role = 2;
+  string title = 3;
+  string filename = 4;
+  string file_path = 5;
+  string body = 6;
+}
+
 // TaskStatus maps directly to the .axa/ directory that owns the task file.
 enum TaskStatus {
   TASK_STATUS_UNSPECIFIED = 0;
@@ -57,6 +73,8 @@ message Task {
   string frontmatter = 16;
   // When true, completing the task moves it to review until a human accepts it.
   bool review_required = 17;
+  // Full task conversation ordered by seq, including the initial user input.
+  repeated ConversationEntry conversation = 18;
 }
 
 message Activity {
@@ -125,7 +143,8 @@ message CreateTaskRequest {
   string actor = 7;
   // Extra frontmatter as YAML. Derived fields are ignored.
   string frontmatter = 8;
-  bool review_required = 9;
+  // Absent means the core default (review required).
+  optional bool review_required = 9;
 }
 
 message CreateTaskResponse {
@@ -153,7 +172,8 @@ message UpdateTaskRequest {
   repeated string tags = 7;
   // Extra frontmatter as YAML. Derived fields are ignored.
   string frontmatter = 8;
-  bool review_required = 9;
+  // Absent keeps the current value.
+  optional bool review_required = 9;
 }
 
 message UpdateTaskResponse {
@@ -212,6 +232,20 @@ message AcceptTaskResponse {
   Task task = 1;
 }
 
+message AppendTaskMessageRequest {
+  string project_id = 1;
+  string task_id = 2;
+  ConversationRole role = 3;
+  string message = 4;
+  // Optional short title used in the conversation filename.
+  string title = 5;
+  string actor = 6;
+}
+
+message AppendTaskMessageResponse {
+  Task task = 1;
+}
+
 message ReclaimStaleTasksRequest {
   string project_id = 1;
   uint32 older_than_seconds = 2;
@@ -248,6 +282,7 @@ service TaskService {
   rpc ReleaseTask(ReleaseTaskRequest) returns (ReleaseTaskResponse);
   rpc CompleteTask(CompleteTaskRequest) returns (CompleteTaskResponse);
   rpc AcceptTask(AcceptTaskRequest) returns (AcceptTaskResponse);
+  rpc AppendTaskMessage(AppendTaskMessageRequest) returns (AppendTaskMessageResponse);
   rpc ReclaimStaleTasks(ReclaimStaleTasksRequest) returns (ReclaimStaleTasksResponse);
   rpc ListActivity(ListActivityRequest) returns (ListActivityResponse);
 }

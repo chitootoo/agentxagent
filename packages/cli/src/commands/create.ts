@@ -28,7 +28,7 @@ export function registerCreateCommand(program: Command): void {
     .option("-d, --description <text>", "task body / acceptance notes")
     .option("--body-file <path>", "read the task body from a Markdown file")
     .option("--tags <tags>", "comma-separated tags")
-    .option("--review", "require human acceptance before the task can be done")
+    .option("--no-review", "skip human acceptance and complete straight to done")
     .option("--agent <name>", "attribution for the author")
     .option("--json", "print machine-readable JSON")
     .action(async (title: string, options: CreateOptions) => {
@@ -51,7 +51,7 @@ export function registerCreateCommand(program: Command): void {
                 .filter(Boolean),
             }
           : {}),
-        reviewRequired: options.review ?? false,
+        reviewRequired: options.review ?? true,
         ...(options.agent ? { actor: options.agent } : {}),
       });
 

@@ -17,7 +17,7 @@ export const EMPTY_TASK_FORM: TaskFormValue = {
   title: "",
   body: "",
   priority: TaskPriority.P1,
-  reviewRequired: false,
+  reviewRequired: true,
   tags: "",
   frontmatter: "",
 };
@@ -80,13 +80,13 @@ export function TaskFormFields({ value, onChange, autoFocus = false }: TaskFormF
 
       <label className="task-review-option">
         <input
-          checked={value.reviewRequired}
-          onChange={(event) => update("reviewRequired", event.target.checked)}
+          checked={!value.reviewRequired}
+          onChange={(event) => update("reviewRequired", !event.target.checked)}
           type="checkbox"
         />
         <span>
-          验收需要人工 Review
-          <small>勾选后任务完成时进入“待验收”，人工验收通过才计入完成。</small>
+          无需review
+          <small>默认任务完成后进入“待验收”，人工验收通过才计入完成；勾选后直接完成。</small>
         </span>
       </label>
 

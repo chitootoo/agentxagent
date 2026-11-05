@@ -1700,6 +1700,84 @@ p {
   border-radius: 4px;
 }
 
+.task-conversation {
+  margin-bottom: 10px;
+  font-size: 9px;
+}
+
+.task-conversation summary {
+  cursor: pointer;
+  font-family: var(--font-mono);
+  color: var(--muted);
+}
+
+.task-conversation ol {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0 0 14px;
+  margin: 0;
+}
+
+.task-conversation li {
+  padding-left: 4px;
+  border-left: 2px solid var(--line);
+}
+
+.conversation-head {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.conversation-role {
+  padding: 0 4px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+}
+
+.conversation-role.role-agent {
+  color: var(--magenta, #8b5cf6);
+  border-color: currentColor;
+}
+
+.conversation-title {
+  font-weight: 600;
+}
+
+.conversation-seq {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  color: var(--muted);
+}
+
+.task-conversation p {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.task-comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.task-comment-form textarea {
+  width: 100%;
+  padding: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  resize: vertical;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
 .task-footer {
   display: flex;
   gap: 8px;

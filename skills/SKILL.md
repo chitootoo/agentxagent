@@ -5,7 +5,7 @@ description: Use the axa CLI to pick up, track, and finish work in a project tha
 
 # axa · Agent Of Agent
 
-axa is a local-first task hub. Every task is a Markdown file under `.axa/tasks/`, and the folder a task lives in is its state:
+axa is a local-first task hub. Every task is a folder under `.axa/tasks/`, and the state directory that contains it determines its status. Each task folder holds `task.json` metadata plus ordered `{seq}_{role}_{title}.md` conversation files (`user` requirements and `agent` round summaries).
 
 ```
 .axa/tasks/backlog/  waiting for human approval
@@ -35,7 +35,7 @@ axa claim --next --agent <your-agent-name>
 axa claim 003 --agent <your-agent-name>
 ```
 
-`claim --next` picks the highest-priority todo task, oldest first. The command prints the path to the Markdown file. Read the whole file before writing code: goal, constraints, and acceptance criteria are in the body.
+`claim --next` picks the highest-priority todo task, oldest first. The command prints the path to the task folder. Read `task.json` and every conversation file in seq order before writing code: the goal, constraints, acceptance criteria, and any follow-up requirements are there.
 
 If you cannot start the task, put it back:
 
@@ -70,17 +70,28 @@ once, uncommitted changes, build output, and the git index collide in a shared w
 Before completing:
 
 1. Verify the change (tests, typecheck, lint, or a manual reproduction).
-2. Append a short implementation note and verification evidence to the task body in `.axa/tasks/doing/<file>.md`.
+2. Append this round's implementation note and verification evidence as an agent message:
+
+```bash
+axa summary 003 --agent <your-agent-name> -m "## 本轮完成
+
+实现说明；pnpm test / typecheck 结果。"
+```
+
 3. Mark it done:
 
 ```bash
 axa done 003 --agent <your-agent-name>
 ```
 
-Tasks created with `--review` (frontmatter `review_required: true`) move to `review/` instead of
-`done/` — a human must accept them with `axa accept <id>` (in the console or via chat). Never accept
-on a human's behalf. Tasks without `review_required` land directly in `done/`; commit the finished
-code right away.
+Tasks require human review by default. `axa done` refuses to move a review-required task forward
+until the latest conversation entry is an agent summary, then places it in `review/`. A human
+accepts with `axa accept <id>` (in the console or via chat). Never accept on a human's behalf.
+Tasks created with `--no-review` land directly in `done/`; commit the finished code right away.
+
+If a human rejects the result, they append a requirement with `axa comment <id> -m "..."`. The task
+reopens to `todo/`, keeps the full conversation, and the next agent must read all rounds before
+continuing.
 
 ## Discover new work
 
@@ -111,9 +122,11 @@ A human approves backlog items with `axa approve <id>`. Only work on tasks that 
 | See everything | `axa board` |
 | Claim highest priority | `axa claim --next --agent me` |
 | Release | `axa release <id> --agent me` |
+| Write a round summary | `axa summary <id> -m "..." --agent me` |
 | Complete | `axa done <id> --agent me` |
 | Accept a review task | `axa accept <id> --agent me` |
-| Read a task | `axa show <id>` |
+| Read a task and its conversation | `axa show <id>` |
 | Add backlog item | `axa create "<title>" --priority P1 --description "..."` |
-| Require human acceptance | add `--review` to `axa create` |
+| Skip human acceptance | add `--no-review` to `axa create` |
+| Append a user requirement | `axa comment <id> -m "..."` |
 | Recover abandoned work | `axa reclaim --older-than 24h` |

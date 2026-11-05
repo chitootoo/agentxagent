@@ -125,7 +125,9 @@ export async function readProjectInfo(projectRoot: string): Promise<ProjectInfo>
       try {
         const entries = await readdir(statusDir(projectRoot, status), { withFileTypes: true });
         counts[status] = entries.filter(
-          (entry) => entry.isFile() && entry.name.endsWith(".md") && !entry.name.startsWith("."),
+          (entry) =>
+            !entry.name.startsWith(".") &&
+            (entry.isDirectory() || (entry.isFile() && entry.name.endsWith(".md"))),
         ).length;
       } catch {
         counts[status] = 0;

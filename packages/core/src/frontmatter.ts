@@ -15,7 +15,15 @@ export interface ParsedDocument {
 }
 
 const TASK_FILENAME_PATTERN = /^(\d{1,9})_(P[0-2])_(.+)\.md$/u;
+const TASK_FOLDER_PATTERN = /^(\d{1,9})_(P[0-2])_(.+)$/u;
+const MESSAGE_FILENAME_PATTERN = /^(\d{3})_(user|agent)_(.+)\.md$/u;
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
+
+export interface ParsedMessageFilename {
+  seq: string;
+  role: "user" | "agent";
+  title: string;
+}
 
 export function isTaskPriority(value: unknown): value is TaskPriority {
   return typeof value === "string" && (TASK_PRIORITIES as readonly string[]).includes(value);
@@ -41,6 +49,34 @@ export function parseTaskFilename(filename: string): ParsedTaskFilename | undefi
   };
 }
 
+export function parseTaskFolderName(name: string): ParsedTaskFilename | undefined {
+  const match = TASK_FOLDER_PATTERN.exec(name);
+  if (!match?.[1] || !match[2] || !match[3]) {
+    return undefined;
+  }
+  return {
+    id: canonicalTaskId(match[1]),
+    priority: match[2] as TaskPriority,
+    description: match[3],
+  };
+}
+
+export function parseMessageFilename(filename: string): ParsedMessageFilename | undefined {
+  const match = MESSAGE_FILENAME_PATTERN.exec(filename);
+  if (!match?.[1] || !match[2] || !match[3]) {
+    return undefined;
+  }
+  return {
+    seq: match[1],
+    role: match[2] as "user" | "agent",
+    title: humanizeDescription(match[3]),
+  };
+}
+
+export function buildMessageFilename(seq: string, role: "user" | "agent", title: string): string {
+  return `${seq}_${role}_${slugifyTitle(title)}.md`;
+}
+
 export function humanizeDescription(description: string): string {
   return description.replaceAll("_", " ").replace(/\s+/g, " ").trim();
 }
@@ -53,14 +89,19 @@ export function slugifyTitle(title: string): string {
     .replace(/\s+/g, "_")
     .replace(/_+/g, "_")
     .replace(/^[._]+|[._]+$/g, "")
+    .replace(/[.。!！?？;；:：,，]+$/u, "")
     .slice(0, 60)
-    .replace(/_+$/g, "");
+    .replace(/[._]+$/g, "");
 
   return slug || "untitled";
 }
 
 export function buildTaskFilename(id: string, priority: TaskPriority, title: string): string {
   return `${id}_${priority}_${slugifyTitle(title)}.md`;
+}
+
+export function buildTaskFolderName(id: string, priority: TaskPriority, title: string): string {
+  return `${id}_${priority}_${slugifyTitle(title)}`;
 }
 
 export function parseFrontmatterData(source: string): Record<string, unknown> {

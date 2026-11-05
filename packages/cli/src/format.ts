@@ -79,10 +79,19 @@ export function printTask(task: Task): void {
     console.log(`Claimed by ${pc.bold(task.claimedBy)} at ${formatDate(task.claimedAt)}`);
   }
   console.log(`Created ${formatDate(task.createdAt)} · Updated ${formatDate(task.updatedAt)}`);
+  console.log(`Review: ${task.reviewRequired ? pc.magenta("required") : pc.green("not required")}`);
   if (task.tags.length > 0) {
     console.log(`Tags: ${task.tags.join(", ")}`);
   }
-  if (task.body) {
+  if (task.conversation.length > 0) {
+    console.log(`\n${pc.bold("Conversation")}`);
+    for (const entry of task.conversation) {
+      console.log(
+        `\n${pc.dim(`[${entry.seq}]`)} ${pc.bold(entry.role)} · ${entry.title} ${pc.dim(entry.filename)}`,
+      );
+      if (entry.body) console.log(entry.body);
+    }
+  } else if (task.body) {
     console.log(`\n${task.body}`);
   }
 }
@@ -127,6 +136,9 @@ export function taskJson(task: Task): Record<string, unknown> {
     reviewRequired: task.reviewRequired,
     filename: task.filename,
     filePath: task.filePath,
+    metadataPath: task.metadataPath,
+    legacy: task.legacy,
+    conversation: task.conversation,
     claimedBy: task.claimedBy,
     claimedAt: task.claimedAt,
     createdAt: task.createdAt,

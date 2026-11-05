@@ -27,6 +27,8 @@ export const ACTION_LABELS: Record<string, string> = {
   release: "释放任务",
   complete: "完成任务",
   accept: "验收通过",
+  comment: "追加需求",
+  summary: "提交汇总",
   reclaim: "回收任务",
 };
 

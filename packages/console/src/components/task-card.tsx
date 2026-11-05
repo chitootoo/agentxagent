@@ -1,6 +1,6 @@
 "use client";
 
-import { type Task, TaskPriority, TaskStatus } from "@contagxt/axa-proto";
+import { ConversationRole, type Task, TaskPriority, TaskStatus } from "@contagxt/axa-proto";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useState } from "react";
 import { formatRelativeTime } from "@/lib/format";
@@ -23,6 +23,7 @@ interface TaskCardProps {
   onApprove: (task: Task) => void;
   onAccept: (task: Task) => void;
   onCopyInstruction: (task: Task) => void;
+  onComment: (task: Task, message: string) => Promise<boolean>;
   onRelease: (task: Task) => void;
   onComplete: (task: Task) => void;
   onDelete: (task: Task) => Promise<boolean>;
@@ -62,6 +63,7 @@ export function TaskCard({
   onApprove,
   onAccept,
   onCopyInstruction,
+  onComment,
   onRelease,
   onComplete,
   onDelete,
@@ -69,6 +71,8 @@ export function TaskCard({
 }: TaskCardProps) {
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [commenting, setCommenting] = useState(false);
+  const [commentDraft, setCommentDraft] = useState("");
   const [draft, setDraft] = useState<TaskFormValue>(() => initialForm(task));
 
   const status = statusMeta(task.status);
@@ -88,6 +92,17 @@ export function TaskCard({
 
   function cancelEditing() {
     setEditing(false);
+  }
+
+  async function submitComment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const message = commentDraft.trim();
+    if (!message) return;
+    const saved = await onComment(task, message);
+    if (saved) {
+      setCommentDraft("");
+      setCommenting(false);
+    }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -203,6 +218,56 @@ export function TaskCard({
         </div>
       ) : null}
 
+      {task.conversation.length > 0 ? (
+        <details className="task-conversation">
+          <summary>{task.conversation.length} 条会话记录</summary>
+          <ol>
+            {task.conversation.map((entry) => (
+              <li key={entry.seq}>
+                <div className="conversation-head">
+                  <span
+                    className={`conversation-role role-${entry.role === ConversationRole.AGENT ? "agent" : "user"}`}
+                  >
+                    {entry.role === ConversationRole.AGENT ? "Agent" : "用户"}
+                  </span>
+                  <span className="conversation-title">{entry.title}</span>
+                  <span className="conversation-seq">#{entry.seq}</span>
+                </div>
+                <p>{entry.body}</p>
+              </li>
+            ))}
+          </ol>
+        </details>
+      ) : null}
+
+      {commenting ? (
+        <form className="task-comment-form" onSubmit={submitComment}>
+          <textarea
+            onChange={(event) => setCommentDraft(event.target.value)}
+            placeholder="补充本轮不满足的期望或新需求；提交后任务会重新进入 Todo。"
+            rows={4}
+            value={commentDraft}
+          />
+          <div className="task-editor-actions">
+            <button
+              className="button tiny primary"
+              disabled={busy || !commentDraft.trim()}
+              type="submit"
+            >
+              {busy ? "提交中…" : "追加需求"}
+            </button>
+            <button
+              className="button tiny ghost"
+              disabled={busy}
+              onClick={() => setCommenting(false)}
+              type="button"
+            >
+              取消
+            </button>
+          </div>
+        </form>
+      ) : null}
+
       <div className="task-footer">
         <div className="task-people">
           {task.claimedBy ? <span>@{task.claimedBy}</span> : <span className="muted">未认领</span>}
@@ -220,6 +285,14 @@ export function TaskCard({
             type="button"
           >
             <CheckIcon size={14} /> 验收通过
+          </button>
+          <button
+            className="button tiny ghost"
+            disabled={busy || commenting}
+            onClick={() => setCommenting(true)}
+            type="button"
+          >
+            追加需求
           </button>
           {busy ? <span className="task-busy">处理中…</span> : null}
         </div>
@@ -272,6 +345,14 @@ export function TaskCard({
         <div className="task-actions done-mark">
           <CheckIcon size={14} />
           {task.completedAt ? `完成于 ${formatRelativeTime(task.completedAt)}` : "已完成"}
+          <button
+            className="button tiny ghost"
+            disabled={busy || commenting}
+            onClick={() => setCommenting(true)}
+            type="button"
+          >
+            追加需求
+          </button>
         </div>
       )}
     </article>

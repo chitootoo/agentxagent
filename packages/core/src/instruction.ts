@@ -12,8 +12,16 @@ export function defaultInstruction(projectName: string): string {
 - \`.axa/tasks/review/\` — 待验收：工作已完成，等待人工验收
 - \`.axa/tasks/done/\` — 已完成
 
-任务文件名格式：\`[编号][优先级][核心描述].md\`，例如 \`001_P0_初始化工作空间.md\`。
+每个任务是状态目录下的一个文件夹，例如 \`.axa/tasks/todo/001_P0_初始化工作空间/\`。
 优先级：\`P0\` 最高、\`P1\` 重要、\`P2\` 优化。
+
+任务文件夹内包含：
+
+- \`task.json\` — 元信息（标题、优先级、创建时间、认领信息、tags 等）
+- \`000_user_<标题>.md\` — 初始需求
+- \`001_agent_<标题>.md\`、\`002_user_<标题>.md\` … — 后续轮次的 Agent 汇总与用户追加需求
+
+所有会话文件按三位序号排序，后续 Agent 必须先读取完整会话，再继续执行。
 
 ## Agent 工作流
 
@@ -31,28 +39,34 @@ export function defaultInstruction(projectName: string): string {
    axa claim --next --agent your-agent-name
    \`\`\`
 
-3. 打开返回的 \`.axa/tasks/doing/*.md\` 文件，阅读目标与验收标准后开始工作。
+3. 打开返回的任务文件夹，按序号阅读全部 \`*_user_*.md\` / \`*_agent_*.md\` 会话记录与 \`task.json\`，
+   理解本轮目标与验收标准后开始工作。
 4. 遇到阻塞时释放任务：
 
    \`\`\`bash
    axa release 003
    \`\`\`
 
-5. 完成并通过验证后标记完成：
+5. 完成并通过验证后，先把本轮汇总写入会话，再标记完成：
 
    \`\`\`bash
+   axa summary 003 --agent your-agent-name \\
+     -m "## 本轮完成\\n\\n实现说明与验证证据（命令、结果）。"
    axa done 003 --agent your-agent-name
    \`\`\`
 
-   任务卡带有 \`review_required: true\`（验收需要人工 review）时，\`axa done\` 会把任务移入
-   \`.axa/tasks/review/\` 待验收，由人类确认后执行 \`axa accept 003\` 才算完成；
-   未开启该选项的任务直接进入 \`done\`，完成后应直接提交代码。
+   任务默认需要人工 review：\`axa done\` 会把任务移入 \`.axa/tasks/review/\` 待验收，
+   由人类确认后执行 \`axa accept 003\` 才算完成。没有提交汇总文件时，\`axa done\` 会拒绝进入 review。
+   创建任务时加 \`--no-review\` 可跳过 review，直接进入 \`done\`。
 
-6. 发现新工作时，先放入 backlog 等待人工批准；需要人工验收的任务加 \`--review\`：
+6. 用户验收不通过时，会通过 \`axa comment 003 -m "..."\` 追加需求，任务重新回到 \`todo\`；
+   下一轮 Agent 应继续读取完整会话后执行。
+
+7. 发现新工作时，先放入 backlog 等待人工批准：
 
    \`\`\`bash
    axa create "补充部署文档" --priority P2 --description "..." --agent your-agent-name
-   axa create "调整线上配置" --priority P1 --review --description "..." --agent your-agent-name
+   axa create "调整线上配置" --priority P1 --no-review --description "..." --agent your-agent-name
    \`\`\`
 
 ## 多任务并行：用 worktree 隔离代码
@@ -75,9 +89,9 @@ export function defaultInstruction(projectName: string): string {
 ## 规则
 
 - 只执行你已成功认领的任务。
-- 不要手工修改 \`status\`、\`claimed_by\` 或移动目录；使用 CLI / SDK。
-- 任务完成后在正文补充实现说明和验证证据，再执行 \`axa done\`。
-- 不需要人工 review 的任务，完成后直接提交代码；需要 review 的任务等待人类验收（\`axa accept\`），Agent 不得自行验收。
+- 不要手工修改 \`task.json\` 中的状态 / 认领信息，也不要手工移动任务文件夹；使用 CLI / SDK。
+- 每轮完成后必须先用 \`axa summary\` 写入实现说明和验证证据，再执行 \`axa done\`。
+- 默认需要人工 review；只有 \`--no-review\` 的任务完成后直接提交代码。需要 review 的任务等待人类验收（\`axa accept\`），Agent 不得自行验收。
 - 不要删除 \`.axa/instruction.md\`。
 - 多个 Agent 可以并行工作，但全局文件锁只保护状态变更，不保护业务代码；并行任务请使用独立 worktree。
 `;

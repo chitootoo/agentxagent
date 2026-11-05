@@ -3,7 +3,9 @@ import type { ServiceImpl } from "@connectrpc/connect";
 import {
   AxaError,
   acceptTask,
+  appendTaskMessage,
   approveTask,
+  type ConversationRole as CoreConversationRole,
   type Task as CoreTask,
   type TaskPriority as CoreTaskPriority,
   type TaskStatus as CoreTaskStatus,
@@ -27,9 +29,12 @@ import {
   AcceptTaskResponseSchema,
   type Activity,
   ActivitySchema,
+  AppendTaskMessageResponseSchema,
   ApproveTaskResponseSchema,
   ClaimTaskResponseSchema,
   CompleteTaskResponseSchema,
+  ConversationEntrySchema,
+  ConversationRole,
   type CreateTaskRequest,
   type CreateTaskResponse,
   CreateTaskResponseSchema,
@@ -114,6 +119,22 @@ function statusFromProto(status: TaskStatus): CoreTaskStatus | undefined {
   }
 }
 
+const ROLE_TO_PROTO: Record<CoreConversationRole, ConversationRole> = {
+  user: ConversationRole.USER,
+  agent: ConversationRole.AGENT,
+};
+
+function roleFromProto(role: ConversationRole): CoreConversationRole | undefined {
+  switch (role) {
+    case ConversationRole.USER:
+      return "user";
+    case ConversationRole.AGENT:
+      return "agent";
+    default:
+      return undefined;
+  }
+}
+
 function extraString(task: CoreTask, key: string): string {
   const value = task.extra[key];
   return typeof value === "string" ? value : "";
@@ -159,6 +180,16 @@ function toTask(task: CoreTask): Task {
     completedAt: extraString(task, "completed_at"),
     frontmatter: stringifyFrontmatterData(task.extra),
     reviewRequired: task.reviewRequired,
+    conversation: task.conversation.map((entry) =>
+      create(ConversationEntrySchema, {
+        seq: entry.seq,
+        role: ROLE_TO_PROTO[entry.role],
+        title: entry.title,
+        filename: entry.filename,
+        filePath: entry.filePath,
+        body: entry.body,
+      }),
+    ),
   });
 }
 
@@ -239,7 +270,7 @@ export const taskServiceImpl: ServiceImpl<typeof TaskService> = {
       body: req.body,
       priority: priorityFromProto(req.priority),
       status,
-      reviewRequired: req.reviewRequired,
+      ...(req.reviewRequired !== undefined ? { reviewRequired: req.reviewRequired } : {}),
       tags: req.tags,
       extra: extraFromFrontmatter(req.frontmatter),
       ...(req.actor.trim() ? { actor: req.actor.trim() } : {}),
@@ -258,7 +289,7 @@ export const taskServiceImpl: ServiceImpl<typeof TaskService> = {
       ...(req.priority !== TaskPriority.UNSPECIFIED
         ? { priority: priorityFromProto(req.priority) }
         : {}),
-      reviewRequired: req.reviewRequired,
+      ...(req.reviewRequired !== undefined ? { reviewRequired: req.reviewRequired } : {}),
       tags: req.tags,
       extra: extraFromFrontmatter(req.frontmatter),
     });
@@ -311,6 +342,24 @@ export const taskServiceImpl: ServiceImpl<typeof TaskService> = {
     const task = await acceptTask(project.path, req.taskId, req.actor);
     logTask(project.id, task, "accept", req.actor);
     return create(AcceptTaskResponseSchema, { task: toTask(task) });
+  },
+
+  async appendTaskMessage(req) {
+    const project = await requireProject(req.projectId);
+    const role = roleFromProto(req.role);
+    if (!role) {
+      throw new AxaError("INVALID_TASK", "Message role must be user or agent.");
+    }
+    const task = await appendTaskMessage({
+      projectRoot: project.path,
+      taskId: req.taskId,
+      role,
+      message: req.message,
+      ...(req.title.trim() ? { title: req.title.trim() } : {}),
+      ...(req.actor.trim() ? { actor: req.actor.trim() } : {}),
+    });
+    logTask(project.id, task, role === "user" ? "comment" : "summary", req.actor);
+    return create(AppendTaskMessageResponseSchema, { task: toTask(task) });
   },
 
   async reclaimStaleTasks(req: ReclaimStaleTasksRequest): Promise<ReclaimStaleTasksResponse> {
