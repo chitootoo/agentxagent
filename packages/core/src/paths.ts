@@ -112,7 +112,13 @@ export async function ensureTaskDirs(projectRoot: string): Promise<void> {
 
 export async function readProjectInfo(projectRoot: string): Promise<ProjectInfo> {
   await assertAxaProject(projectRoot);
-  const counts = { backlog: 0, todo: 0, doing: 0, done: 0 } satisfies Record<TaskStatus, number>;
+  const counts = {
+    backlog: 0,
+    todo: 0,
+    doing: 0,
+    review: 0,
+    done: 0,
+  } satisfies Record<TaskStatus, number>;
 
   await Promise.all(
     TASK_STATUSES.map(async (status) => {

@@ -18,6 +18,8 @@ enum TaskStatus {
   TASK_STATUS_TODO = 2;
   TASK_STATUS_DOING = 3;
   TASK_STATUS_DONE = 4;
+  // Work is finished but a human must accept it before it counts as done.
+  TASK_STATUS_REVIEW = 5;
 }
 
 message Project {
@@ -31,6 +33,7 @@ message Project {
   int32 doing_count = 8;
   int32 done_count = 9;
   int32 total_tasks = 10;
+  int32 review_count = 11;
 }
 
 message Task {
@@ -49,6 +52,11 @@ message Task {
   string created_by = 13;
   string completed_by = 14;
   string completed_at = 15;
+  // Extra frontmatter fields as a YAML mapping. Derived fields (id, priority,
+  // status) are omitted because they live in the file path.
+  string frontmatter = 16;
+  // When true, completing the task moves it to review until a human accepts it.
+  bool review_required = 17;
 }
 
 message Activity {
@@ -115,6 +123,9 @@ message CreateTaskRequest {
   TaskStatus status = 5;
   repeated string tags = 6;
   string actor = 7;
+  // Extra frontmatter as YAML. Derived fields are ignored.
+  string frontmatter = 8;
+  bool review_required = 9;
 }
 
 message CreateTaskResponse {
@@ -128,6 +139,34 @@ message ApproveTaskRequest {
 }
 
 message ApproveTaskResponse {
+  Task task = 1;
+}
+
+message UpdateTaskRequest {
+  string project_id = 1;
+  string task_id = 2;
+  string title = 3;
+  string body = 4;
+  string actor = 5;
+  // Unspecified keeps the current priority.
+  TaskPriority priority = 6;
+  repeated string tags = 7;
+  // Extra frontmatter as YAML. Derived fields are ignored.
+  string frontmatter = 8;
+  bool review_required = 9;
+}
+
+message UpdateTaskResponse {
+  Task task = 1;
+}
+
+message DeleteTaskRequest {
+  string project_id = 1;
+  string task_id = 2;
+  string actor = 3;
+}
+
+message DeleteTaskResponse {
   Task task = 1;
 }
 
@@ -163,6 +202,16 @@ message CompleteTaskResponse {
   Task task = 1;
 }
 
+message AcceptTaskRequest {
+  string project_id = 1;
+  string task_id = 2;
+  string actor = 3;
+}
+
+message AcceptTaskResponse {
+  Task task = 1;
+}
+
 message ReclaimStaleTasksRequest {
   string project_id = 1;
   uint32 older_than_seconds = 2;
@@ -192,10 +241,13 @@ service TaskService {
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
   rpc GetTask(GetTaskRequest) returns (GetTaskResponse);
   rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
+  rpc UpdateTask(UpdateTaskRequest) returns (UpdateTaskResponse);
+  rpc DeleteTask(DeleteTaskRequest) returns (DeleteTaskResponse);
   rpc ApproveTask(ApproveTaskRequest) returns (ApproveTaskResponse);
   rpc ClaimTask(ClaimTaskRequest) returns (ClaimTaskResponse);
   rpc ReleaseTask(ReleaseTaskRequest) returns (ReleaseTaskResponse);
   rpc CompleteTask(CompleteTaskRequest) returns (CompleteTaskResponse);
+  rpc AcceptTask(AcceptTaskRequest) returns (AcceptTaskResponse);
   rpc ReclaimStaleTasks(ReclaimStaleTasksRequest) returns (ReclaimStaleTasksResponse);
   rpc ListActivity(ListActivityRequest) returns (ListActivityResponse);
 }

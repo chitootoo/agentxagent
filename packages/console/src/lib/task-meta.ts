@@ -7,20 +7,26 @@ export const PRIORITY_META: Record<TaskPriority, { label: string; hint: string }
   [TaskPriority.P2]: { label: "P2", hint: "优化 / 长期" },
 };
 
+export const PRIORITY_OPTIONS = [TaskPriority.P0, TaskPriority.P1, TaskPriority.P2] as const;
+
 export const STATUS_META: Record<TaskStatus, { label: string; hint: string; className: string }> = {
   [TaskStatus.UNSPECIFIED]: { label: "未知", hint: "", className: "backlog" },
   [TaskStatus.BACKLOG]: { label: "Backlog", hint: "待审核", className: "backlog" },
   [TaskStatus.TODO]: { label: "Todo", hint: "可认领", className: "todo" },
   [TaskStatus.DOING]: { label: "Doing", hint: "进行中", className: "doing" },
+  [TaskStatus.REVIEW]: { label: "Review", hint: "待验收", className: "review" },
   [TaskStatus.DONE]: { label: "Done", hint: "已完成", className: "done" },
 };
 
 export const ACTION_LABELS: Record<string, string> = {
   create: "创建任务",
+  update: "编辑任务",
+  delete: "删除任务",
   approve: "批准任务",
   claim: "认领任务",
   release: "释放任务",
   complete: "完成任务",
+  accept: "验收通过",
   reclaim: "回收任务",
 };
 

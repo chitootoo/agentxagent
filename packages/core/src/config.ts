@@ -179,7 +179,7 @@ export async function listRegisteredProjects(): Promise<ListProjectsResult[]> {
           path: project.path,
           axaPath: join(project.path, ".axa"),
           instructionPath: join(project.path, ".axa", "instruction.md"),
-          counts: { backlog: 0, todo: 0, doing: 0, done: 0 },
+          counts: { backlog: 0, todo: 0, doing: 0, review: 0, done: 0 },
           total: 0,
           exists: false,
         };

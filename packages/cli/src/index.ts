@@ -1,6 +1,7 @@
 import { isAxaError } from "@contagxt/axa-core";
 import { Command } from "commander";
 import pc from "picocolors";
+import { registerAcceptCommand } from "./commands/accept.js";
 import { registerApproveCommand } from "./commands/approve.js";
 import { registerClaimCommand } from "./commands/claim.js";
 import { registerCreateCommand } from "./commands/create.js";
@@ -29,6 +30,7 @@ registerClaimCommand(program);
 registerReleaseCommand(program);
 registerDoneCommand(program);
 registerApproveCommand(program);
+registerAcceptCommand(program);
 registerReclaimCommand(program);
 
 program.parseAsync(process.argv).catch((error: unknown) => {

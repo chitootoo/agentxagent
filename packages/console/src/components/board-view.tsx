@@ -5,11 +5,19 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { taskClient } from "@/lib/client";
 import { errorMessage, formatRelativeTime, shortPath } from "@/lib/format";
+import { copyText, taskExecutionPrompt } from "@/lib/instruction";
 import { actionLabel, statusMeta } from "@/lib/task-meta";
-import { ArrowLeftIcon, CheckIcon, PlusIcon, RefreshIcon, SparkIcon } from "./icons";
-import { TaskCard } from "./task-card";
+import { ArrowLeftIcon, CheckIcon, RefreshIcon, SparkIcon, TrashIcon } from "./icons";
+import { NewTaskCard, type NewTaskDraft } from "./new-task-card";
+import { TaskCard, type TaskDraft } from "./task-card";
 
-const COLUMNS = [TaskStatus.BACKLOG, TaskStatus.TODO, TaskStatus.DOING, TaskStatus.DONE] as const;
+const COLUMNS = [
+  TaskStatus.BACKLOG,
+  TaskStatus.TODO,
+  TaskStatus.DOING,
+  TaskStatus.REVIEW,
+  TaskStatus.DONE,
+] as const;
 
 interface BoardViewProps {
   projectId: string;
@@ -61,7 +69,11 @@ export function BoardView({ projectId }: BoardViewProps) {
     window.localStorage.setItem("axa.actor", value);
   }
 
-  async function runAction(taskId: string, action: () => Promise<unknown>, message: string) {
+  async function runAction(
+    taskId: string,
+    action: () => Promise<unknown>,
+    message: string,
+  ): Promise<boolean> {
     setBusyId(taskId);
     setActionError(undefined);
     setNotice(undefined);
@@ -69,11 +81,77 @@ export function BoardView({ projectId }: BoardViewProps) {
       await action();
       setNotice(message);
       await load(true);
+      return true;
     } catch (cause) {
       setActionError(errorMessage(cause));
+      return false;
     } finally {
       setBusyId(undefined);
     }
+  }
+
+  async function saveTask(task: Task, draft: TaskDraft): Promise<boolean> {
+    const title = draft.title.trim();
+    if (!title) {
+      setActionError("任务标题不能为空。");
+      return false;
+    }
+    return runAction(
+      task.id,
+      () =>
+        taskClient.updateTask({
+          projectId,
+          taskId: task.id,
+          title,
+          body: draft.body,
+          priority: draft.priority,
+          reviewRequired: draft.reviewRequired,
+          tags: draft.tags,
+          frontmatter: draft.frontmatter,
+          actor,
+        }),
+      `已保存 #${task.id}`,
+    );
+  }
+
+  async function createNewTask(draft: NewTaskDraft): Promise<boolean> {
+    const title = draft.title.trim();
+    if (!title) {
+      setActionError("任务标题不能为空。");
+      return false;
+    }
+    setBusyId("__create");
+    setActionError(undefined);
+    setNotice(undefined);
+    try {
+      const response = await taskClient.createTask({
+        projectId,
+        title,
+        body: draft.body,
+        priority: draft.priority,
+        status: draft.status,
+        reviewRequired: draft.reviewRequired,
+        tags: draft.tags,
+        frontmatter: draft.frontmatter,
+        actor,
+      });
+      setNotice(response.task ? `已创建 #${response.task.id}` : "已创建任务");
+      await load(true);
+      return true;
+    } catch (cause) {
+      setActionError(errorMessage(cause));
+      return false;
+    } finally {
+      setBusyId(undefined);
+    }
+  }
+
+  async function deleteTask(task: Task): Promise<boolean> {
+    return runAction(
+      task.id,
+      () => taskClient.deleteTask({ projectId, taskId: task.id, actor }),
+      `已删除 #${task.id}`,
+    );
   }
 
   async function approveTask(task: Task) {
@@ -84,16 +162,19 @@ export function BoardView({ projectId }: BoardViewProps) {
     );
   }
 
-  async function claimTask(task: Task) {
-    if (!actor.trim()) {
-      setActionError("请先填写操作人，以便记录认领归属。");
+  async function copyInstruction(task: Task) {
+    if (!project?.path) {
+      setActionError("项目路径尚未加载，请稍后重试。");
       return;
     }
-    await runAction(
-      task.id,
-      () => taskClient.claimTask({ projectId, taskId: task.id, actor: actor.trim(), next: false }),
-      `已认领 #${task.id}`,
-    );
+    setActionError(undefined);
+    setNotice(undefined);
+    try {
+      await copyText(taskExecutionPrompt(task, project.path));
+      setNotice(`已复制 #${task.id} 的执行指令，粘贴给 Agent 即可开始。`);
+    } catch (cause) {
+      setActionError(errorMessage(cause));
+    }
   }
 
   async function releaseTask(task: Task) {
@@ -108,7 +189,15 @@ export function BoardView({ projectId }: BoardViewProps) {
     await runAction(
       task.id,
       () => taskClient.completeTask({ projectId, taskId: task.id, actor }),
-      `已完成 #${task.id}`,
+      task.reviewRequired ? `已提交验收 #${task.id}` : `已完成 #${task.id}`,
+    );
+  }
+
+  async function acceptTask(task: Task) {
+    await runAction(
+      task.id,
+      () => taskClient.acceptTask({ projectId, taskId: task.id, actor }),
+      `已验收通过 #${task.id}`,
     );
   }
 
@@ -197,9 +286,6 @@ export function BoardView({ projectId }: BoardViewProps) {
           >
             <RefreshIcon size={15} /> 回收超时
           </button>
-          <Link className="button primary" href={`/projects/${projectId}/new`}>
-            <PlusIcon size={16} /> 新建任务
-          </Link>
         </div>
       </header>
 
@@ -237,19 +323,33 @@ export function BoardView({ projectId }: BoardViewProps) {
               </div>
               <p className="column-hint">{meta.hint}</p>
               <div className="column-cards">
+                {status === TaskStatus.BACKLOG ? (
+                  <NewTaskCard busy={busyId === "__create"} onCreate={createNewTask} />
+                ) : null}
                 {columnTasks.length === 0 ? (
-                  <div className="column-empty">
-                    <span>{status === TaskStatus.DONE ? "还没有完成记录" : "暂无任务"}</span>
-                  </div>
+                  status === TaskStatus.BACKLOG ? null : (
+                    <div className="column-empty">
+                      <span>
+                        {status === TaskStatus.DONE
+                          ? "还没有完成记录"
+                          : status === TaskStatus.REVIEW
+                            ? "暂无待验收"
+                            : "暂无任务"}
+                      </span>
+                    </div>
+                  )
                 ) : (
                   columnTasks.map((task) => (
                     <TaskCard
                       busy={busyId === task.id}
                       key={task.id}
                       onApprove={(item) => void approveTask(item)}
-                      onClaim={(item) => void claimTask(item)}
+                      onAccept={(item) => void acceptTask(item)}
                       onComplete={(item) => void completeTask(item)}
+                      onCopyInstruction={(item) => void copyInstruction(item)}
+                      onDelete={deleteTask}
                       onRelease={(item) => void releaseTask(item)}
+                      onUpdate={saveTask}
                       task={task}
                     />
                   ))
@@ -277,6 +377,8 @@ export function BoardView({ projectId }: BoardViewProps) {
                 <span className="timeline-icon">
                   {activity.action === "complete" ? (
                     <CheckIcon size={13} />
+                  ) : activity.action === "delete" ? (
+                    <TrashIcon size={13} />
                   ) : (
                     <SparkIcon size={13} />
                   )}

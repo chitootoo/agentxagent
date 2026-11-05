@@ -63,14 +63,7 @@ export function buildTaskFilename(id: string, priority: TaskPriority, title: str
   return `${id}_${priority}_${slugifyTitle(title)}.md`;
 }
 
-export function parseTaskDocument(content: string): ParsedDocument {
-  const normalized = content.replace(/^\uFEFF/u, "").replaceAll("\r\n", "\n");
-  const match = FRONTMATTER_PATTERN.exec(normalized);
-  if (!match) {
-    return { data: {}, body: normalized.trim() };
-  }
-
-  const source = match[1] ?? "";
+export function parseFrontmatterData(source: string): Record<string, unknown> {
   let parsed: unknown;
   try {
     parsed = parseYaml(source) ?? {};
@@ -82,15 +75,29 @@ export function parseTaskDocument(content: string): ParsedDocument {
     throw new AxaError("INVALID_TASK", "Task frontmatter must be a YAML mapping.");
   }
 
+  return parsed as Record<string, unknown>;
+}
+
+export function stringifyFrontmatterData(data: Record<string, unknown>): string {
+  const clean = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
+  return stringifyYaml(clean, { lineWidth: 0 }).trimEnd();
+}
+
+export function parseTaskDocument(content: string): ParsedDocument {
+  const normalized = content.replace(/^\uFEFF/u, "").replaceAll("\r\n", "\n");
+  const match = FRONTMATTER_PATTERN.exec(normalized);
+  if (!match) {
+    return { data: {}, body: normalized.trim() };
+  }
+
   return {
-    data: parsed as Record<string, unknown>,
+    data: parseFrontmatterData(match[1] ?? ""),
     body: normalized.slice(match[0].length).trim(),
   };
 }
 
 export function serializeTaskDocument(data: Record<string, unknown>, body: string): string {
-  const clean = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined));
-  const yaml = stringifyYaml(clean, { lineWidth: 0 }).trimEnd();
+  const yaml = stringifyFrontmatterData(data);
   const content = body.trim();
   return content ? `---\n${yaml}\n---\n\n${content}\n` : `---\n${yaml}\n---\n`;
 }
@@ -104,6 +111,16 @@ export function stringValue(value: unknown): string | undefined {
   }
   if (typeof value === "number") {
     return String(value);
+  }
+  return undefined;
+}
+
+export function booleanValue(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
   }
   return undefined;
 }

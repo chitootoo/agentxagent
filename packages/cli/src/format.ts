@@ -5,6 +5,7 @@ const STATUS_COLORS: Record<TaskStatus, (value: string) => string> = {
   backlog: pc.gray,
   todo: pc.cyan,
   doing: pc.yellow,
+  review: pc.magenta,
   done: pc.green,
 };
 
@@ -93,7 +94,7 @@ export function printProjects(projects: ListProjectsResult[]): void {
   }
   for (const project of projects) {
     const missing = project.exists ? "" : pc.red(" [missing]");
-    const counts = `${project.counts.todo} todo · ${project.counts.doing} doing · ${project.counts.done} done`;
+    const counts = `${project.counts.todo} todo · ${project.counts.doing} doing · ${project.counts.review} review · ${project.counts.done} done`;
     console.log(`${pc.bold(project.id)}  ${project.name}${missing}`);
     console.log(`  ${pc.dim(project.path)}`);
     console.log(`  ${counts} · ${project.counts.backlog} backlog`);
@@ -101,7 +102,7 @@ export function printProjects(projects: ListProjectsResult[]): void {
 }
 
 export function printBoard(tasks: Task[]): void {
-  for (const status of ["backlog", "todo", "doing", "done"] as const) {
+  for (const status of ["backlog", "todo", "doing", "review", "done"] as const) {
     const group = tasks.filter((task) => task.status === status);
     console.log(`\n${STATUS_COLORS[status](status.toUpperCase())} ${pc.dim(`(${group.length})`)}`);
     if (group.length === 0) {
@@ -123,6 +124,7 @@ export function taskJson(task: Task): Record<string, unknown> {
     title: task.title,
     priority: task.priority,
     status: task.status,
+    reviewRequired: task.reviewRequired,
     filename: task.filename,
     filePath: task.filePath,
     claimedBy: task.claimedBy,

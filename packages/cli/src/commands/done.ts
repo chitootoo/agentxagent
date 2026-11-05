@@ -21,6 +21,12 @@ export function registerDoneCommand(program: Command): void {
         console.log(JSON.stringify(taskJson(task), null, 2));
         return;
       }
+      if (task.status === "review") {
+        console.log(
+          `${pc.magenta("⏳")} Finished ${pc.bold(task.id)} ${task.title} → ${pc.magenta("review")}（待人工验收，验收请执行 axa accept ${task.id}）`,
+        );
+        return;
+      }
       console.log(`${pc.green("✓")} Completed ${pc.bold(task.id)} ${task.title}`);
     });
 }

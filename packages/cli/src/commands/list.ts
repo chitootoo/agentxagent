@@ -51,7 +51,7 @@ export function registerListCommand(program: Command): void {
     .alias("ls")
     .description("List tasks")
     .option("-p, --project <path|id>", "project path or registered id")
-    .option("-s, --status <statuses>", "comma-separated backlog,todo,doing,done")
+    .option("-s, --status <statuses>", "comma-separated backlog,todo,doing,review,done")
     .option("--priority <priority>", "P0, P1, or P2")
     .option("--claimed-by <agent>", "only tasks claimed by an agent")
     .option("--board", "group tasks by state")

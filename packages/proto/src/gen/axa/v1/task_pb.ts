@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file axa/v1/task.proto.
  */
 export const file_axa_v1_task: GenFile = /*@__PURE__*/
-  fileDesc("ChFheGEvdjEvdGFzay5wcm90bxIGYXhhLnYxIrwBCgdQcm9qZWN0EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEcGF0aBgDIAEoCRIQCghheGFfcGF0aBgEIAEoCRIOCgZleGlzdHMYBSABKAgSFQoNYmFja2xvZ19jb3VudBgGIAEoBRISCgp0b2RvX2NvdW50GAcgASgFEhMKC2RvaW5nX2NvdW50GAggASgFEhIKCmRvbmVfY291bnQYCSABKAUSEwoLdG90YWxfdGFza3MYCiABKAUivgIKBFRhc2sSCgoCaWQYASABKAkSDQoFdGl0bGUYAiABKAkSJgoIcHJpb3JpdHkYAyABKA4yFC5heGEudjEuVGFza1ByaW9yaXR5EiIKBnN0YXR1cxgEIAEoDjISLmF4YS52MS5UYXNrU3RhdHVzEgwKBGJvZHkYBSABKAkSEAoIZmlsZW5hbWUYBiABKAkSEQoJZmlsZV9wYXRoGAcgASgJEhIKCmNsYWltZWRfYnkYCCABKAkSEgoKY2xhaW1lZF9hdBgJIAEoCRISCgpjcmVhdGVkX2F0GAogASgJEhIKCnVwZGF0ZWRfYXQYCyABKAkSDAoEdGFncxgMIAMoCRISCgpjcmVhdGVkX2J5GA0gASgJEhQKDGNvbXBsZXRlZF9ieRgOIAEoCRIUCgxjb21wbGV0ZWRfYXQYDyABKAkiggEKCEFjdGl2aXR5EgoKAmlkGAEgASgFEhIKCnByb2plY3RfaWQYAiABKAkSDwoHdGFza19pZBgDIAEoCRISCgp0YXNrX3RpdGxlGAQgASgJEg4KBmFjdGlvbhgFIAEoCRINCgVhY3RvchgGIAEoCRISCgpjcmVhdGVkX2F0GAcgASgJIhUKE0xpc3RQcm9qZWN0c1JlcXVlc3QiOQoUTGlzdFByb2plY3RzUmVzcG9uc2USIQoIcHJvamVjdHMYASADKAsyDy5heGEudjEuUHJvamVjdCJIChZSZWdpc3RlclByb2plY3RSZXF1ZXN0EgwKBHBhdGgYASABKAkSDAoEbmFtZRgCIAEoCRISCgppbml0aWFsaXplGAMgASgIIjsKF1JlZ2lzdGVyUHJvamVjdFJlc3BvbnNlEiAKB3Byb2plY3QYASABKAsyDy5heGEudjEuUHJvamVjdCIqChRSZW1vdmVQcm9qZWN0UmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJIhcKFVJlbW92ZVByb2plY3RSZXNwb25zZSKIAQoQTGlzdFRhc2tzUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEiQKCHN0YXR1c2VzGAIgAygOMhIuYXhhLnYxLlRhc2tTdGF0dXMSJgoIcHJpb3JpdHkYAyABKA4yFC5heGEudjEuVGFza1ByaW9yaXR5EhIKCmNsYWltZWRfYnkYBCABKAkiUgoRTGlzdFRhc2tzUmVzcG9uc2USIAoHcHJvamVjdBgBIAEoCzIPLmF4YS52MS5Qcm9qZWN0EhsKBXRhc2tzGAIgAygLMgwuYXhhLnYxLlRhc2siNQoOR2V0VGFza1JlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCRIPCgd0YXNrX2lkGAIgASgJIi0KD0dldFRhc2tSZXNwb25zZRIaCgR0YXNrGAEgASgLMgwuYXhhLnYxLlRhc2sirQEKEUNyZWF0ZVRhc2tSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSDQoFdGl0bGUYAiABKAkSDAoEYm9keRgDIAEoCRImCghwcmlvcml0eRgEIAEoDjIULmF4YS52MS5UYXNrUHJpb3JpdHkSIgoGc3RhdHVzGAUgASgOMhIuYXhhLnYxLlRhc2tTdGF0dXMSDAoEdGFncxgGIAMoCRINCgVhY3RvchgHIAEoCSIwChJDcmVhdGVUYXNrUmVzcG9uc2USGgoEdGFzaxgBIAEoCzIMLmF4YS52MS5UYXNrIkgKEkFwcHJvdmVUYXNrUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEg8KB3Rhc2tfaWQYAiABKAkSDQoFYWN0b3IYAyABKAkiMQoTQXBwcm92ZVRhc2tSZXNwb25zZRIaCgR0YXNrGAEgASgLMgwuYXhhLnYxLlRhc2siVAoQQ2xhaW1UYXNrUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEg8KB3Rhc2tfaWQYAiABKAkSDAoEbmV4dBgDIAEoCBINCgVhY3RvchgEIAEoCSIvChFDbGFpbVRhc2tSZXNwb25zZRIaCgR0YXNrGAEgASgLMgwuYXhhLnYxLlRhc2siSAoSUmVsZWFzZVRhc2tSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSDwoHdGFza19pZBgCIAEoCRINCgVhY3RvchgDIAEoCSIxChNSZWxlYXNlVGFza1Jlc3BvbnNlEhoKBHRhc2sYASABKAsyDC5heGEudjEuVGFzayJJChNDb21wbGV0ZVRhc2tSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSDwoHdGFza19pZBgCIAEoCRINCgVhY3RvchgDIAEoCSIyChRDb21wbGV0ZVRhc2tSZXNwb25zZRIaCgR0YXNrGAEgASgLMgwuYXhhLnYxLlRhc2siWQoYUmVjbGFpbVN0YWxlVGFza3NSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSGgoSb2xkZXJfdGhhbl9zZWNvbmRzGAIgASgNEg0KBWFjdG9yGAMgASgJIk0KGVJlY2xhaW1TdGFsZVRhc2tzUmVzcG9uc2USHwoJcmVjbGFpbWVkGAEgAygLMgwuYXhhLnYxLlRhc2sSDwoHc2tpcHBlZBgCIAEoBSI4ChNMaXN0QWN0aXZpdHlSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSDQoFbGltaXQYAiABKAUiPAoUTGlzdEFjdGl2aXR5UmVzcG9uc2USJAoKYWN0aXZpdGllcxgBIAMoCzIQLmF4YS52MS5BY3Rpdml0eSpvCgxUYXNrUHJpb3JpdHkSHQoZVEFTS19QUklPUklUWV9VTlNQRUNJRklFRBAAEhQKEFRBU0tfUFJJT1JJVFlfUDAQARIUChBUQVNLX1BSSU9SSVRZX1AxEAISFAoQVEFTS19QUklPUklUWV9QMhADKoUBCgpUYXNrU3RhdHVzEhsKF1RBU0tfU1RBVFVTX1VOU1BFQ0lGSUVEEAASFwoTVEFTS19TVEFUVVNfQkFDS0xPRxABEhQKEFRBU0tfU1RBVFVTX1RPRE8QAhIVChFUQVNLX1NUQVRVU19ET0lORxADEhQKEFRBU0tfU1RBVFVTX0RPTkUQBDL/BgoLVGFza1NlcnZpY2USSQoMTGlzdFByb2plY3RzEhsuYXhhLnYxLkxpc3RQcm9qZWN0c1JlcXVlc3QaHC5heGEudjEuTGlzdFByb2plY3RzUmVzcG9uc2USUgoPUmVnaXN0ZXJQcm9qZWN0Eh4uYXhhLnYxLlJlZ2lzdGVyUHJvamVjdFJlcXVlc3QaHy5heGEudjEuUmVnaXN0ZXJQcm9qZWN0UmVzcG9uc2USTAoNUmVtb3ZlUHJvamVjdBIcLmF4YS52MS5SZW1vdmVQcm9qZWN0UmVxdWVzdBodLmF4YS52MS5SZW1vdmVQcm9qZWN0UmVzcG9uc2USQAoJTGlzdFRhc2tzEhguYXhhLnYxLkxpc3RUYXNrc1JlcXVlc3QaGS5heGEudjEuTGlzdFRhc2tzUmVzcG9uc2USOgoHR2V0VGFzaxIWLmF4YS52MS5HZXRUYXNrUmVxdWVzdBoXLmF4YS52MS5HZXRUYXNrUmVzcG9uc2USQwoKQ3JlYXRlVGFzaxIZLmF4YS52MS5DcmVhdGVUYXNrUmVxdWVzdBoaLmF4YS52MS5DcmVhdGVUYXNrUmVzcG9uc2USRgoLQXBwcm92ZVRhc2sSGi5heGEudjEuQXBwcm92ZVRhc2tSZXF1ZXN0GhsuYXhhLnYxLkFwcHJvdmVUYXNrUmVzcG9uc2USQAoJQ2xhaW1UYXNrEhguYXhhLnYxLkNsYWltVGFza1JlcXVlc3QaGS5heGEudjEuQ2xhaW1UYXNrUmVzcG9uc2USRgoLUmVsZWFzZVRhc2sSGi5heGEudjEuUmVsZWFzZVRhc2tSZXF1ZXN0GhsuYXhhLnYxLlJlbGVhc2VUYXNrUmVzcG9uc2USSQoMQ29tcGxldGVUYXNrEhsuYXhhLnYxLkNvbXBsZXRlVGFza1JlcXVlc3QaHC5heGEudjEuQ29tcGxldGVUYXNrUmVzcG9uc2USWAoRUmVjbGFpbVN0YWxlVGFza3MSIC5heGEudjEuUmVjbGFpbVN0YWxlVGFza3NSZXF1ZXN0GiEuYXhhLnYxLlJlY2xhaW1TdGFsZVRhc2tzUmVzcG9uc2USSQoMTGlzdEFjdGl2aXR5EhsuYXhhLnYxLkxpc3RBY3Rpdml0eVJlcXVlc3QaHC5heGEudjEuTGlzdEFjdGl2aXR5UmVzcG9uc2ViBnByb3RvMw");
+  fileDesc("ChFheGEvdjEvdGFzay5wcm90bxIGYXhhLnYxItIBCgdQcm9qZWN0EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSDAoEcGF0aBgDIAEoCRIQCghheGFfcGF0aBgEIAEoCRIOCgZleGlzdHMYBSABKAgSFQoNYmFja2xvZ19jb3VudBgGIAEoBRISCgp0b2RvX2NvdW50GAcgASgFEhMKC2RvaW5nX2NvdW50GAggASgFEhIKCmRvbmVfY291bnQYCSABKAUSEwoLdG90YWxfdGFza3MYCiABKAUSFAoMcmV2aWV3X2NvdW50GAsgASgFIuwCCgRUYXNrEgoKAmlkGAEgASgJEg0KBXRpdGxlGAIgASgJEiYKCHByaW9yaXR5GAMgASgOMhQuYXhhLnYxLlRhc2tQcmlvcml0eRIiCgZzdGF0dXMYBCABKA4yEi5heGEudjEuVGFza1N0YXR1cxIMCgRib2R5GAUgASgJEhAKCGZpbGVuYW1lGAYgASgJEhEKCWZpbGVfcGF0aBgHIAEoCRISCgpjbGFpbWVkX2J5GAggASgJEhIKCmNsYWltZWRfYXQYCSABKAkSEgoKY3JlYXRlZF9hdBgKIAEoCRISCgp1cGRhdGVkX2F0GAsgASgJEgwKBHRhZ3MYDCADKAkSEgoKY3JlYXRlZF9ieRgNIAEoCRIUCgxjb21wbGV0ZWRfYnkYDiABKAkSFAoMY29tcGxldGVkX2F0GA8gASgJEhMKC2Zyb250bWF0dGVyGBAgASgJEhcKD3Jldmlld19yZXF1aXJlZBgRIAEoCCKCAQoIQWN0aXZpdHkSCgoCaWQYASABKAUSEgoKcHJvamVjdF9pZBgCIAEoCRIPCgd0YXNrX2lkGAMgASgJEhIKCnRhc2tfdGl0bGUYBCABKAkSDgoGYWN0aW9uGAUgASgJEg0KBWFjdG9yGAYgASgJEhIKCmNyZWF0ZWRfYXQYByABKAkiFQoTTGlzdFByb2plY3RzUmVxdWVzdCI5ChRMaXN0UHJvamVjdHNSZXNwb25zZRIhCghwcm9qZWN0cxgBIAMoCzIPLmF4YS52MS5Qcm9qZWN0IkgKFlJlZ2lzdGVyUHJvamVjdFJlcXVlc3QSDAoEcGF0aBgBIAEoCRIMCgRuYW1lGAIgASgJEhIKCmluaXRpYWxpemUYAyABKAgiOwoXUmVnaXN0ZXJQcm9qZWN0UmVzcG9uc2USIAoHcHJvamVjdBgBIAEoCzIPLmF4YS52MS5Qcm9qZWN0IioKFFJlbW92ZVByb2plY3RSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkiFwoVUmVtb3ZlUHJvamVjdFJlc3BvbnNlIogBChBMaXN0VGFza3NSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSJAoIc3RhdHVzZXMYAiADKA4yEi5heGEudjEuVGFza1N0YXR1cxImCghwcmlvcml0eRgDIAEoDjIULmF4YS52MS5UYXNrUHJpb3JpdHkSEgoKY2xhaW1lZF9ieRgEIAEoCSJSChFMaXN0VGFza3NSZXNwb25zZRIgCgdwcm9qZWN0GAEgASgLMg8uYXhhLnYxLlByb2plY3QSGwoFdGFza3MYAiADKAsyDC5heGEudjEuVGFzayI1Cg5HZXRUYXNrUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEg8KB3Rhc2tfaWQYAiABKAkiLQoPR2V0VGFza1Jlc3BvbnNlEhoKBHRhc2sYASABKAsyDC5heGEudjEuVGFzayLbAQoRQ3JlYXRlVGFza1JlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCRINCgV0aXRsZRgCIAEoCRIMCgRib2R5GAMgASgJEiYKCHByaW9yaXR5GAQgASgOMhQuYXhhLnYxLlRhc2tQcmlvcml0eRIiCgZzdGF0dXMYBSABKA4yEi5heGEudjEuVGFza1N0YXR1cxIMCgR0YWdzGAYgAygJEg0KBWFjdG9yGAcgASgJEhMKC2Zyb250bWF0dGVyGAggASgJEhcKD3Jldmlld19yZXF1aXJlZBgJIAEoCCIwChJDcmVhdGVUYXNrUmVzcG9uc2USGgoEdGFzaxgBIAEoCzIMLmF4YS52MS5UYXNrIkgKEkFwcHJvdmVUYXNrUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEg8KB3Rhc2tfaWQYAiABKAkSDQoFYWN0b3IYAyABKAkiMQoTQXBwcm92ZVRhc2tSZXNwb25zZRIaCgR0YXNrGAEgASgLMgwuYXhhLnYxLlRhc2siyAEKEVVwZGF0ZVRhc2tSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSDwoHdGFza19pZBgCIAEoCRINCgV0aXRsZRgDIAEoCRIMCgRib2R5GAQgASgJEg0KBWFjdG9yGAUgASgJEiYKCHByaW9yaXR5GAYgASgOMhQuYXhhLnYxLlRhc2tQcmlvcml0eRIMCgR0YWdzGAcgAygJEhMKC2Zyb250bWF0dGVyGAggASgJEhcKD3Jldmlld19yZXF1aXJlZBgJIAEoCCIwChJVcGRhdGVUYXNrUmVzcG9uc2USGgoEdGFzaxgBIAEoCzIMLmF4YS52MS5UYXNrIkcKEURlbGV0ZVRhc2tSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSDwoHdGFza19pZBgCIAEoCRINCgVhY3RvchgDIAEoCSIwChJEZWxldGVUYXNrUmVzcG9uc2USGgoEdGFzaxgBIAEoCzIMLmF4YS52MS5UYXNrIlQKEENsYWltVGFza1JlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCRIPCgd0YXNrX2lkGAIgASgJEgwKBG5leHQYAyABKAgSDQoFYWN0b3IYBCABKAkiLwoRQ2xhaW1UYXNrUmVzcG9uc2USGgoEdGFzaxgBIAEoCzIMLmF4YS52MS5UYXNrIkgKElJlbGVhc2VUYXNrUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEg8KB3Rhc2tfaWQYAiABKAkSDQoFYWN0b3IYAyABKAkiMQoTUmVsZWFzZVRhc2tSZXNwb25zZRIaCgR0YXNrGAEgASgLMgwuYXhhLnYxLlRhc2siSQoTQ29tcGxldGVUYXNrUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEg8KB3Rhc2tfaWQYAiABKAkSDQoFYWN0b3IYAyABKAkiMgoUQ29tcGxldGVUYXNrUmVzcG9uc2USGgoEdGFzaxgBIAEoCzIMLmF4YS52MS5UYXNrIkcKEUFjY2VwdFRhc2tSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSDwoHdGFza19pZBgCIAEoCRINCgVhY3RvchgDIAEoCSIwChJBY2NlcHRUYXNrUmVzcG9uc2USGgoEdGFzaxgBIAEoCzIMLmF4YS52MS5UYXNrIlkKGFJlY2xhaW1TdGFsZVRhc2tzUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEhoKEm9sZGVyX3RoYW5fc2Vjb25kcxgCIAEoDRINCgVhY3RvchgDIAEoCSJNChlSZWNsYWltU3RhbGVUYXNrc1Jlc3BvbnNlEh8KCXJlY2xhaW1lZBgBIAMoCzIMLmF4YS52MS5UYXNrEg8KB3NraXBwZWQYAiABKAUiOAoTTGlzdEFjdGl2aXR5UmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEg0KBWxpbWl0GAIgASgFIjwKFExpc3RBY3Rpdml0eVJlc3BvbnNlEiQKCmFjdGl2aXRpZXMYASADKAsyEC5heGEudjEuQWN0aXZpdHkqbwoMVGFza1ByaW9yaXR5Eh0KGVRBU0tfUFJJT1JJVFlfVU5TUEVDSUZJRUQQABIUChBUQVNLX1BSSU9SSVRZX1AwEAESFAoQVEFTS19QUklPUklUWV9QMRACEhQKEFRBU0tfUFJJT1JJVFlfUDIQAyqdAQoKVGFza1N0YXR1cxIbChdUQVNLX1NUQVRVU19VTlNQRUNJRklFRBAAEhcKE1RBU0tfU1RBVFVTX0JBQ0tMT0cQARIUChBUQVNLX1NUQVRVU19UT0RPEAISFQoRVEFTS19TVEFUVVNfRE9JTkcQAxIUChBUQVNLX1NUQVRVU19ET05FEAQSFgoSVEFTS19TVEFUVVNfUkVWSUVXEAUyzggKC1Rhc2tTZXJ2aWNlEkkKDExpc3RQcm9qZWN0cxIbLmF4YS52MS5MaXN0UHJvamVjdHNSZXF1ZXN0GhwuYXhhLnYxLkxpc3RQcm9qZWN0c1Jlc3BvbnNlElIKD1JlZ2lzdGVyUHJvamVjdBIeLmF4YS52MS5SZWdpc3RlclByb2plY3RSZXF1ZXN0Gh8uYXhhLnYxLlJlZ2lzdGVyUHJvamVjdFJlc3BvbnNlEkwKDVJlbW92ZVByb2plY3QSHC5heGEudjEuUmVtb3ZlUHJvamVjdFJlcXVlc3QaHS5heGEudjEuUmVtb3ZlUHJvamVjdFJlc3BvbnNlEkAKCUxpc3RUYXNrcxIYLmF4YS52MS5MaXN0VGFza3NSZXF1ZXN0GhkuYXhhLnYxLkxpc3RUYXNrc1Jlc3BvbnNlEjoKB0dldFRhc2sSFi5heGEudjEuR2V0VGFza1JlcXVlc3QaFy5heGEudjEuR2V0VGFza1Jlc3BvbnNlEkMKCkNyZWF0ZVRhc2sSGS5heGEudjEuQ3JlYXRlVGFza1JlcXVlc3QaGi5heGEudjEuQ3JlYXRlVGFza1Jlc3BvbnNlEkMKClVwZGF0ZVRhc2sSGS5heGEudjEuVXBkYXRlVGFza1JlcXVlc3QaGi5heGEudjEuVXBkYXRlVGFza1Jlc3BvbnNlEkMKCkRlbGV0ZVRhc2sSGS5heGEudjEuRGVsZXRlVGFza1JlcXVlc3QaGi5heGEudjEuRGVsZXRlVGFza1Jlc3BvbnNlEkYKC0FwcHJvdmVUYXNrEhouYXhhLnYxLkFwcHJvdmVUYXNrUmVxdWVzdBobLmF4YS52MS5BcHByb3ZlVGFza1Jlc3BvbnNlEkAKCUNsYWltVGFzaxIYLmF4YS52MS5DbGFpbVRhc2tSZXF1ZXN0GhkuYXhhLnYxLkNsYWltVGFza1Jlc3BvbnNlEkYKC1JlbGVhc2VUYXNrEhouYXhhLnYxLlJlbGVhc2VUYXNrUmVxdWVzdBobLmF4YS52MS5SZWxlYXNlVGFza1Jlc3BvbnNlEkkKDENvbXBsZXRlVGFzaxIbLmF4YS52MS5Db21wbGV0ZVRhc2tSZXF1ZXN0GhwuYXhhLnYxLkNvbXBsZXRlVGFza1Jlc3BvbnNlEkMKCkFjY2VwdFRhc2sSGS5heGEudjEuQWNjZXB0VGFza1JlcXVlc3QaGi5heGEudjEuQWNjZXB0VGFza1Jlc3BvbnNlElgKEVJlY2xhaW1TdGFsZVRhc2tzEiAuYXhhLnYxLlJlY2xhaW1TdGFsZVRhc2tzUmVxdWVzdBohLmF4YS52MS5SZWNsYWltU3RhbGVUYXNrc1Jlc3BvbnNlEkkKDExpc3RBY3Rpdml0eRIbLmF4YS52MS5MaXN0QWN0aXZpdHlSZXF1ZXN0GhwuYXhhLnYxLkxpc3RBY3Rpdml0eVJlc3BvbnNlYgZwcm90bzM");
 
 /**
  * @generated from message axa.v1.Project
@@ -65,6 +65,11 @@ export type Project = Message<"axa.v1.Project"> & {
    * @generated from field: int32 total_tasks = 10;
    */
   totalTasks: number;
+
+  /**
+   * @generated from field: int32 review_count = 11;
+   */
+  reviewCount: number;
 };
 
 /**
@@ -152,6 +157,21 @@ export type Task = Message<"axa.v1.Task"> & {
    * @generated from field: string completed_at = 15;
    */
   completedAt: string;
+
+  /**
+   * Extra frontmatter fields as a YAML mapping. Derived fields (id, priority,
+   * status) are omitted because they live in the file path.
+   *
+   * @generated from field: string frontmatter = 16;
+   */
+  frontmatter: string;
+
+  /**
+   * When true, completing the task moves it to review until a human accepts it.
+   *
+   * @generated from field: bool review_required = 17;
+   */
+  reviewRequired: boolean;
 };
 
 /**
@@ -449,6 +469,18 @@ export type CreateTaskRequest = Message<"axa.v1.CreateTaskRequest"> & {
    * @generated from field: string actor = 7;
    */
   actor: string;
+
+  /**
+   * Extra frontmatter as YAML. Derived fields are ignored.
+   *
+   * @generated from field: string frontmatter = 8;
+   */
+  frontmatter: string;
+
+  /**
+   * @generated from field: bool review_required = 9;
+   */
+  reviewRequired: boolean;
 };
 
 /**
@@ -520,6 +552,128 @@ export const ApproveTaskResponseSchema: GenMessage<ApproveTaskResponse> = /*@__P
   messageDesc(file_axa_v1_task, 16);
 
 /**
+ * @generated from message axa.v1.UpdateTaskRequest
+ */
+export type UpdateTaskRequest = Message<"axa.v1.UpdateTaskRequest"> & {
+  /**
+   * @generated from field: string project_id = 1;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string task_id = 2;
+   */
+  taskId: string;
+
+  /**
+   * @generated from field: string title = 3;
+   */
+  title: string;
+
+  /**
+   * @generated from field: string body = 4;
+   */
+  body: string;
+
+  /**
+   * @generated from field: string actor = 5;
+   */
+  actor: string;
+
+  /**
+   * Unspecified keeps the current priority.
+   *
+   * @generated from field: axa.v1.TaskPriority priority = 6;
+   */
+  priority: TaskPriority;
+
+  /**
+   * @generated from field: repeated string tags = 7;
+   */
+  tags: string[];
+
+  /**
+   * Extra frontmatter as YAML. Derived fields are ignored.
+   *
+   * @generated from field: string frontmatter = 8;
+   */
+  frontmatter: string;
+
+  /**
+   * @generated from field: bool review_required = 9;
+   */
+  reviewRequired: boolean;
+};
+
+/**
+ * Describes the message axa.v1.UpdateTaskRequest.
+ * Use `create(UpdateTaskRequestSchema)` to create a new message.
+ */
+export const UpdateTaskRequestSchema: GenMessage<UpdateTaskRequest> = /*@__PURE__*/
+  messageDesc(file_axa_v1_task, 17);
+
+/**
+ * @generated from message axa.v1.UpdateTaskResponse
+ */
+export type UpdateTaskResponse = Message<"axa.v1.UpdateTaskResponse"> & {
+  /**
+   * @generated from field: axa.v1.Task task = 1;
+   */
+  task?: Task | undefined;
+};
+
+/**
+ * Describes the message axa.v1.UpdateTaskResponse.
+ * Use `create(UpdateTaskResponseSchema)` to create a new message.
+ */
+export const UpdateTaskResponseSchema: GenMessage<UpdateTaskResponse> = /*@__PURE__*/
+  messageDesc(file_axa_v1_task, 18);
+
+/**
+ * @generated from message axa.v1.DeleteTaskRequest
+ */
+export type DeleteTaskRequest = Message<"axa.v1.DeleteTaskRequest"> & {
+  /**
+   * @generated from field: string project_id = 1;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string task_id = 2;
+   */
+  taskId: string;
+
+  /**
+   * @generated from field: string actor = 3;
+   */
+  actor: string;
+};
+
+/**
+ * Describes the message axa.v1.DeleteTaskRequest.
+ * Use `create(DeleteTaskRequestSchema)` to create a new message.
+ */
+export const DeleteTaskRequestSchema: GenMessage<DeleteTaskRequest> = /*@__PURE__*/
+  messageDesc(file_axa_v1_task, 19);
+
+/**
+ * @generated from message axa.v1.DeleteTaskResponse
+ */
+export type DeleteTaskResponse = Message<"axa.v1.DeleteTaskResponse"> & {
+  /**
+   * @generated from field: axa.v1.Task task = 1;
+   */
+  task?: Task | undefined;
+};
+
+/**
+ * Describes the message axa.v1.DeleteTaskResponse.
+ * Use `create(DeleteTaskResponseSchema)` to create a new message.
+ */
+export const DeleteTaskResponseSchema: GenMessage<DeleteTaskResponse> = /*@__PURE__*/
+  messageDesc(file_axa_v1_task, 20);
+
+/**
  * @generated from message axa.v1.ClaimTaskRequest
  */
 export type ClaimTaskRequest = Message<"axa.v1.ClaimTaskRequest"> & {
@@ -551,7 +705,7 @@ export type ClaimTaskRequest = Message<"axa.v1.ClaimTaskRequest"> & {
  * Use `create(ClaimTaskRequestSchema)` to create a new message.
  */
 export const ClaimTaskRequestSchema: GenMessage<ClaimTaskRequest> = /*@__PURE__*/
-  messageDesc(file_axa_v1_task, 17);
+  messageDesc(file_axa_v1_task, 21);
 
 /**
  * @generated from message axa.v1.ClaimTaskResponse
@@ -568,7 +722,7 @@ export type ClaimTaskResponse = Message<"axa.v1.ClaimTaskResponse"> & {
  * Use `create(ClaimTaskResponseSchema)` to create a new message.
  */
 export const ClaimTaskResponseSchema: GenMessage<ClaimTaskResponse> = /*@__PURE__*/
-  messageDesc(file_axa_v1_task, 18);
+  messageDesc(file_axa_v1_task, 22);
 
 /**
  * @generated from message axa.v1.ReleaseTaskRequest
@@ -595,7 +749,7 @@ export type ReleaseTaskRequest = Message<"axa.v1.ReleaseTaskRequest"> & {
  * Use `create(ReleaseTaskRequestSchema)` to create a new message.
  */
 export const ReleaseTaskRequestSchema: GenMessage<ReleaseTaskRequest> = /*@__PURE__*/
-  messageDesc(file_axa_v1_task, 19);
+  messageDesc(file_axa_v1_task, 23);
 
 /**
  * @generated from message axa.v1.ReleaseTaskResponse
@@ -612,7 +766,7 @@ export type ReleaseTaskResponse = Message<"axa.v1.ReleaseTaskResponse"> & {
  * Use `create(ReleaseTaskResponseSchema)` to create a new message.
  */
 export const ReleaseTaskResponseSchema: GenMessage<ReleaseTaskResponse> = /*@__PURE__*/
-  messageDesc(file_axa_v1_task, 20);
+  messageDesc(file_axa_v1_task, 24);
 
 /**
  * @generated from message axa.v1.CompleteTaskRequest
@@ -639,7 +793,7 @@ export type CompleteTaskRequest = Message<"axa.v1.CompleteTaskRequest"> & {
  * Use `create(CompleteTaskRequestSchema)` to create a new message.
  */
 export const CompleteTaskRequestSchema: GenMessage<CompleteTaskRequest> = /*@__PURE__*/
-  messageDesc(file_axa_v1_task, 21);
+  messageDesc(file_axa_v1_task, 25);
 
 /**
  * @generated from message axa.v1.CompleteTaskResponse
@@ -656,7 +810,51 @@ export type CompleteTaskResponse = Message<"axa.v1.CompleteTaskResponse"> & {
  * Use `create(CompleteTaskResponseSchema)` to create a new message.
  */
 export const CompleteTaskResponseSchema: GenMessage<CompleteTaskResponse> = /*@__PURE__*/
-  messageDesc(file_axa_v1_task, 22);
+  messageDesc(file_axa_v1_task, 26);
+
+/**
+ * @generated from message axa.v1.AcceptTaskRequest
+ */
+export type AcceptTaskRequest = Message<"axa.v1.AcceptTaskRequest"> & {
+  /**
+   * @generated from field: string project_id = 1;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string task_id = 2;
+   */
+  taskId: string;
+
+  /**
+   * @generated from field: string actor = 3;
+   */
+  actor: string;
+};
+
+/**
+ * Describes the message axa.v1.AcceptTaskRequest.
+ * Use `create(AcceptTaskRequestSchema)` to create a new message.
+ */
+export const AcceptTaskRequestSchema: GenMessage<AcceptTaskRequest> = /*@__PURE__*/
+  messageDesc(file_axa_v1_task, 27);
+
+/**
+ * @generated from message axa.v1.AcceptTaskResponse
+ */
+export type AcceptTaskResponse = Message<"axa.v1.AcceptTaskResponse"> & {
+  /**
+   * @generated from field: axa.v1.Task task = 1;
+   */
+  task?: Task | undefined;
+};
+
+/**
+ * Describes the message axa.v1.AcceptTaskResponse.
+ * Use `create(AcceptTaskResponseSchema)` to create a new message.
+ */
+export const AcceptTaskResponseSchema: GenMessage<AcceptTaskResponse> = /*@__PURE__*/
+  messageDesc(file_axa_v1_task, 28);
 
 /**
  * @generated from message axa.v1.ReclaimStaleTasksRequest
@@ -683,7 +881,7 @@ export type ReclaimStaleTasksRequest = Message<"axa.v1.ReclaimStaleTasksRequest"
  * Use `create(ReclaimStaleTasksRequestSchema)` to create a new message.
  */
 export const ReclaimStaleTasksRequestSchema: GenMessage<ReclaimStaleTasksRequest> = /*@__PURE__*/
-  messageDesc(file_axa_v1_task, 23);
+  messageDesc(file_axa_v1_task, 29);
 
 /**
  * @generated from message axa.v1.ReclaimStaleTasksResponse
@@ -705,7 +903,7 @@ export type ReclaimStaleTasksResponse = Message<"axa.v1.ReclaimStaleTasksRespons
  * Use `create(ReclaimStaleTasksResponseSchema)` to create a new message.
  */
 export const ReclaimStaleTasksResponseSchema: GenMessage<ReclaimStaleTasksResponse> = /*@__PURE__*/
-  messageDesc(file_axa_v1_task, 24);
+  messageDesc(file_axa_v1_task, 30);
 
 /**
  * @generated from message axa.v1.ListActivityRequest
@@ -729,7 +927,7 @@ export type ListActivityRequest = Message<"axa.v1.ListActivityRequest"> & {
  * Use `create(ListActivityRequestSchema)` to create a new message.
  */
 export const ListActivityRequestSchema: GenMessage<ListActivityRequest> = /*@__PURE__*/
-  messageDesc(file_axa_v1_task, 25);
+  messageDesc(file_axa_v1_task, 31);
 
 /**
  * @generated from message axa.v1.ListActivityResponse
@@ -746,7 +944,7 @@ export type ListActivityResponse = Message<"axa.v1.ListActivityResponse"> & {
  * Use `create(ListActivityResponseSchema)` to create a new message.
  */
 export const ListActivityResponseSchema: GenMessage<ListActivityResponse> = /*@__PURE__*/
-  messageDesc(file_axa_v1_task, 26);
+  messageDesc(file_axa_v1_task, 32);
 
 /**
  * TaskPriority follows the axa convention: P0 blocks others, P1 is important,
@@ -812,6 +1010,13 @@ export enum TaskStatus {
    * @generated from enum value: TASK_STATUS_DONE = 4;
    */
   DONE = 4,
+
+  /**
+   * Work is finished but a human must accept it before it counts as done.
+   *
+   * @generated from enum value: TASK_STATUS_REVIEW = 5;
+   */
+  REVIEW = 5,
 }
 
 /**
@@ -875,6 +1080,22 @@ export const TaskService: GenService<{
     output: typeof CreateTaskResponseSchema;
   },
   /**
+   * @generated from rpc axa.v1.TaskService.UpdateTask
+   */
+  updateTask: {
+    methodKind: "unary";
+    input: typeof UpdateTaskRequestSchema;
+    output: typeof UpdateTaskResponseSchema;
+  },
+  /**
+   * @generated from rpc axa.v1.TaskService.DeleteTask
+   */
+  deleteTask: {
+    methodKind: "unary";
+    input: typeof DeleteTaskRequestSchema;
+    output: typeof DeleteTaskResponseSchema;
+  },
+  /**
    * @generated from rpc axa.v1.TaskService.ApproveTask
    */
   approveTask: {
@@ -905,6 +1126,14 @@ export const TaskService: GenService<{
     methodKind: "unary";
     input: typeof CompleteTaskRequestSchema;
     output: typeof CompleteTaskResponseSchema;
+  },
+  /**
+   * @generated from rpc axa.v1.TaskService.AcceptTask
+   */
+  acceptTask: {
+    methodKind: "unary";
+    input: typeof AcceptTaskRequestSchema;
+    output: typeof AcceptTaskResponseSchema;
   },
   /**
    * @generated from rpc axa.v1.TaskService.ReclaimStaleTasks

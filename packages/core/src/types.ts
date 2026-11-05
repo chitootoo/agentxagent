@@ -1,4 +1,4 @@
-export const TASK_STATUSES = ["backlog", "todo", "doing", "done"] as const;
+export const TASK_STATUSES = ["backlog", "todo", "doing", "review", "done"] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
 
 export const TASK_PRIORITIES = ["P0", "P1", "P2"] as const;
@@ -13,6 +13,7 @@ export interface Task {
   filename: string;
   filePath: string;
   projectRoot: string;
+  reviewRequired: boolean;
   claimedBy?: string;
   claimedAt?: string;
   createdAt: string;
@@ -54,8 +55,21 @@ export interface CreateTaskInput {
   body?: string;
   priority?: TaskPriority;
   status?: Extract<TaskStatus, "backlog" | "todo">;
+  reviewRequired?: boolean;
   tags?: string[];
+  extra?: Record<string, unknown>;
   actor?: string;
+}
+
+export interface UpdateTaskInput {
+  projectRoot: string;
+  taskId: string;
+  title: string;
+  body: string;
+  priority?: TaskPriority;
+  reviewRequired?: boolean;
+  tags?: string[];
+  extra?: Record<string, unknown>;
 }
 
 export interface ListTasksOptions {

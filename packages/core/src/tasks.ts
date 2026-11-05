@@ -1,7 +1,8 @@
-import { readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
+import { readdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { AxaError } from "./errors.js";
 import {
+  booleanValue,
   buildTaskFilename,
   canonicalTaskId,
   humanizeDescription,
@@ -38,6 +39,7 @@ import type {
   TaskIssue,
   TaskPriority,
   TaskStatus,
+  UpdateTaskInput,
 } from "./types.js";
 import { TASK_PRIORITIES, TASK_STATUSES } from "./types.js";
 
@@ -50,6 +52,7 @@ const CORE_FRONTMATTER_KEYS = new Set([
   "updated_at",
   "claimed_by",
   "claimed_at",
+  "review_required",
   "tags",
 ]);
 
@@ -71,6 +74,14 @@ function extractExtra(data: Record<string, unknown>): Record<string, unknown> {
   );
 }
 
+function sanitizeExtra(extra: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(extra).filter(
+      ([key, value]) => !CORE_FRONTMATTER_KEYS.has(key) && value != null,
+    ),
+  );
+}
+
 export async function readTaskFile(
   filePath: string,
   projectRoot: string,
@@ -89,7 +100,6 @@ export async function readTaskFile(
   const document = parseTaskDocument(content);
   const data = document.data;
   const title = stringValue(data.title) ?? humanizeDescription(parsedName.description);
-  const priority = isTaskPriority(data.priority) ? data.priority : parsedName.priority;
   const claimedBy = stringValue(data.claimed_by);
   const claimedAt = isoDateIfPresent(data.claimed_at);
   const fallbackDate = fileStat.mtime;
@@ -97,12 +107,13 @@ export async function readTaskFile(
   return {
     id: parsedName.id,
     title,
-    priority,
+    priority: parsedName.priority,
     status,
     body: document.body,
     filename,
     filePath,
     projectRoot,
+    reviewRequired: booleanValue(data.review_required) ?? false,
     ...(claimedBy ? { claimedBy } : {}),
     ...(claimedAt ? { claimedAt } : {}),
     createdAt: isoDate(
@@ -232,14 +243,12 @@ export async function getTask(projectRoot: string, taskId: string): Promise<Task
 
 function taskFrontmatter(task: Task): Record<string, unknown> {
   return {
-    id: task.id,
     title: task.title,
-    priority: task.priority,
-    status: task.status,
     created_at: task.createdAt,
     updated_at: task.updatedAt,
     ...(task.claimedBy ? { claimed_by: task.claimedBy } : {}),
     ...(task.claimedAt ? { claimed_at: task.claimedAt } : {}),
+    ...(task.reviewRequired ? { review_required: true } : {}),
     ...(task.tags.length > 0 ? { tags: task.tags } : {}),
     ...task.extra,
   };
@@ -335,13 +344,72 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
       filename,
       filePath: join(statusDir(projectRoot, status), filename),
       projectRoot,
+      reviewRequired: input.reviewRequired ?? false,
       createdAt: now,
       updatedAt: now,
       tags: (input.tags ?? []).map((tag) => tag.trim()).filter(Boolean),
-      extra: input.actor ? { created_by: input.actor } : {},
+      extra: {
+        ...(input.extra ? sanitizeExtra(input.extra) : {}),
+        ...(input.actor ? { created_by: input.actor } : {}),
+      },
     };
     await writeFileAtomic(task.filePath, serializeTaskDocument(taskFrontmatter(task), task.body));
     return readTaskFile(task.filePath, projectRoot, status);
+  });
+}
+
+export async function updateTask(input: UpdateTaskInput): Promise<Task> {
+  const projectRoot = resolve(input.projectRoot);
+  await assertAxaProject(projectRoot);
+  const title = input.title.trim();
+  if (!title) {
+    throw new AxaError("INVALID_TASK", "Task title cannot be empty.");
+  }
+  if (title.length > 300) {
+    throw new AxaError("INVALID_TASK", "Task title must be 300 characters or fewer.");
+  }
+  if (input.priority && !isTaskPriority(input.priority)) {
+    throw new AxaError("INVALID_TASK", `Invalid priority: ${input.priority}`);
+  }
+
+  return withLock(projectLockPath(projectRoot), async () => {
+    const { task, status } = await findTaskLocation(projectRoot, input.taskId);
+    const next: Task = {
+      ...task,
+      title,
+      body: input.body.trim(),
+      priority: input.priority ?? task.priority,
+      reviewRequired: input.reviewRequired ?? task.reviewRequired,
+      tags: input.tags ? input.tags.map((tag) => tag.trim()).filter(Boolean) : task.tags,
+      extra: input.extra ? sanitizeExtra(input.extra) : task.extra,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const parsedName = parseTaskFilename(task.filename);
+    const filename = parsedName
+      ? buildTaskFilename(task.id, next.priority, parsedName.description)
+      : task.filename;
+    next.filename = filename;
+
+    const destination = join(statusDir(projectRoot, status), filename);
+    if (destination !== task.filePath && (await pathExists(destination))) {
+      throw new AxaError("CONFLICT", `A task file already exists at ${destination}.`);
+    }
+
+    await writeFileAtomic(task.filePath, serializeTaskDocument(taskFrontmatter(next), next.body));
+    if (destination !== task.filePath) {
+      await rename(task.filePath, destination);
+    }
+    return readTaskFile(destination, projectRoot, status);
+  });
+}
+
+export async function deleteTask(projectRoot: string, taskId: string): Promise<Task> {
+  await assertAxaProject(projectRoot);
+  return withLock(projectLockPath(projectRoot), async () => {
+    const { task } = await findTaskLocation(projectRoot, taskId);
+    await unlink(task.filePath);
+    return task;
   });
 }
 
@@ -438,11 +506,36 @@ export async function completeTask(
         `Task ${task.id} is ${status}; only doing tasks can be completed.`,
       );
     }
-    return persistAndMove(task, "done", projectRoot, (next) => {
+    const nextStatus: TaskStatus = task.reviewRequired ? "review" : "done";
+    return persistAndMove(task, nextStatus, projectRoot, (next) => {
       next.extra = {
         ...next.extra,
         completed_at: new Date().toISOString(),
         completed_by: actor ?? next.claimedBy ?? "unknown",
+      };
+    });
+  });
+}
+
+export async function acceptTask(
+  projectRoot: string,
+  taskId: string,
+  actor?: string,
+): Promise<Task> {
+  await assertAxaProject(projectRoot);
+  return withLock(projectLockPath(projectRoot), async () => {
+    const { task, status } = await findTaskLocation(projectRoot, taskId);
+    if (status !== "review") {
+      throw new AxaError(
+        "INVALID_STATE",
+        `Task ${task.id} is ${status}; only review tasks can be accepted.`,
+      );
+    }
+    return persistAndMove(task, "done", projectRoot, (next) => {
+      next.extra = {
+        ...next.extra,
+        accepted_at: new Date().toISOString(),
+        accepted_by: actor ?? "human",
       };
     });
   });

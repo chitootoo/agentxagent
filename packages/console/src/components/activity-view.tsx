@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { taskClient } from "@/lib/client";
 import { errorMessage, formatDateTime, formatRelativeTime } from "@/lib/format";
 import { actionLabel } from "@/lib/task-meta";
-import { CheckIcon, SparkIcon } from "./icons";
+import { CheckIcon, SparkIcon, TrashIcon } from "./icons";
 
 export function ActivityView() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -98,6 +98,8 @@ export function ActivityView() {
                 <span className={`timeline-icon action-${activity.action}`}>
                   {activity.action === "complete" ? (
                     <CheckIcon size={14} />
+                  ) : activity.action === "delete" ? (
+                    <TrashIcon size={14} />
                   ) : (
                     <SparkIcon size={14} />
                   )}

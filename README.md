@@ -78,6 +78,10 @@ axa --help
 
 所有写操作都支持 `--project <path|id>` 指定目标项目；省略时依次使用当前目录、默认项目。Agent 身份可用 `--agent` 或环境变量 `AXA_AGENT` 提供。
 
+### 多 Agent 并行
+
+`.axa/` 的锁只保护任务状态，不保护源码。多个 Agent 并行时，先在主工作区认领任务，再为每个任务创建独立的 git worktree / 分支，在 worktree 内编码与提交；合并后在主工作区执行 `axa done`，不要在两个工作树里各改一份任务状态。详见 `.axa/instruction.md` 与 `skills/SKILL.md`。
+
 ## `.axa/` 契约
 
 ```

@@ -2,6 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import type { ServiceImpl } from "@connectrpc/connect";
 import {
   AxaError,
+  acceptTask,
   approveTask,
   type Task as CoreTask,
   type TaskPriority as CoreTaskPriority,
@@ -9,16 +10,21 @@ import {
   claimTask,
   completeTask,
   createTask,
+  deleteTask,
   getTask,
   type ListProjectsResult,
   listRegisteredProjects,
+  parseFrontmatterData,
   reclaimStaleTasks,
   registerProject,
   releaseTask,
   removeRegisteredProject,
   scanTasks,
+  stringifyFrontmatterData,
+  updateTask,
 } from "@contagxt/axa-core";
 import {
+  AcceptTaskResponseSchema,
   type Activity,
   ActivitySchema,
   ApproveTaskResponseSchema,
@@ -27,6 +33,9 @@ import {
   type CreateTaskRequest,
   type CreateTaskResponse,
   CreateTaskResponseSchema,
+  type DeleteTaskRequest,
+  type DeleteTaskResponse,
+  DeleteTaskResponseSchema,
   type GetTaskRequest,
   type GetTaskResponse,
   GetTaskResponseSchema,
@@ -54,6 +63,9 @@ import {
   TaskSchema,
   type TaskService,
   TaskStatus,
+  type UpdateTaskRequest,
+  type UpdateTaskResponse,
+  UpdateTaskResponseSchema,
 } from "@contagxt/axa-proto";
 import { requireProjectSummary } from "../config/projects";
 import { listActivityRows, recordActivity } from "./db/index";
@@ -68,6 +80,7 @@ const STATUS_TO_PROTO: Record<CoreTaskStatus, TaskStatus> = {
   backlog: TaskStatus.BACKLOG,
   todo: TaskStatus.TODO,
   doing: TaskStatus.DOING,
+  review: TaskStatus.REVIEW,
   done: TaskStatus.DONE,
 };
 
@@ -92,6 +105,8 @@ function statusFromProto(status: TaskStatus): CoreTaskStatus | undefined {
       return "todo";
     case TaskStatus.DOING:
       return "doing";
+    case TaskStatus.REVIEW:
+      return "review";
     case TaskStatus.DONE:
       return "done";
     default:
@@ -104,6 +119,11 @@ function extraString(task: CoreTask, key: string): string {
   return typeof value === "string" ? value : "";
 }
 
+function extraFromFrontmatter(source: string): Record<string, unknown> {
+  const trimmed = source.trim();
+  return trimmed ? parseFrontmatterData(trimmed) : {};
+}
+
 function toProject(project: ListProjectsResult): Project {
   return create(ProjectSchema, {
     id: project.id,
@@ -114,6 +134,7 @@ function toProject(project: ListProjectsResult): Project {
     backlogCount: project.counts.backlog,
     todoCount: project.counts.todo,
     doingCount: project.counts.doing,
+    reviewCount: project.counts.review,
     doneCount: project.counts.done,
     totalTasks: project.total,
   });
@@ -136,6 +157,8 @@ function toTask(task: CoreTask): Task {
     createdBy: extraString(task, "created_by"),
     completedBy: extraString(task, "completed_by"),
     completedAt: extraString(task, "completed_at"),
+    frontmatter: stringifyFrontmatterData(task.extra),
+    reviewRequired: task.reviewRequired,
   });
 }
 
@@ -216,11 +239,38 @@ export const taskServiceImpl: ServiceImpl<typeof TaskService> = {
       body: req.body,
       priority: priorityFromProto(req.priority),
       status,
+      reviewRequired: req.reviewRequired,
       tags: req.tags,
+      extra: extraFromFrontmatter(req.frontmatter),
       ...(req.actor.trim() ? { actor: req.actor.trim() } : {}),
     });
     logTask(project.id, task, "create", req.actor);
     return create(CreateTaskResponseSchema, { task: toTask(task) });
+  },
+
+  async updateTask(req: UpdateTaskRequest): Promise<UpdateTaskResponse> {
+    const project = await requireProject(req.projectId);
+    const task = await updateTask({
+      projectRoot: project.path,
+      taskId: req.taskId,
+      title: req.title,
+      body: req.body,
+      ...(req.priority !== TaskPriority.UNSPECIFIED
+        ? { priority: priorityFromProto(req.priority) }
+        : {}),
+      reviewRequired: req.reviewRequired,
+      tags: req.tags,
+      extra: extraFromFrontmatter(req.frontmatter),
+    });
+    logTask(project.id, task, "update", req.actor);
+    return create(UpdateTaskResponseSchema, { task: toTask(task) });
+  },
+
+  async deleteTask(req: DeleteTaskRequest): Promise<DeleteTaskResponse> {
+    const project = await requireProject(req.projectId);
+    const task = await deleteTask(project.path, req.taskId);
+    logTask(project.id, task, "delete", req.actor);
+    return create(DeleteTaskResponseSchema, { task: toTask(task) });
   },
 
   async approveTask(req) {
@@ -254,6 +304,13 @@ export const taskServiceImpl: ServiceImpl<typeof TaskService> = {
     const task = await completeTask(project.path, req.taskId, req.actor);
     logTask(project.id, task, "complete", req.actor);
     return create(CompleteTaskResponseSchema, { task: toTask(task) });
+  },
+
+  async acceptTask(req) {
+    const project = await requireProject(req.projectId);
+    const task = await acceptTask(project.path, req.taskId, req.actor);
+    logTask(project.id, task, "accept", req.actor);
+    return create(AcceptTaskResponseSchema, { task: toTask(task) });
   },
 
   async reclaimStaleTasks(req: ReclaimStaleTasksRequest): Promise<ReclaimStaleTasksResponse> {

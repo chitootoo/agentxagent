@@ -13,13 +13,16 @@ export {
 export type { AxaErrorCode } from "./errors.js";
 export { AxaError, isAxaError } from "./errors.js";
 export {
+  booleanValue,
   buildTaskFilename,
   canonicalTaskId,
   humanizeDescription,
+  parseFrontmatterData,
   parseTaskDocument,
   parseTaskFilename,
   serializeTaskDocument,
   slugifyTitle,
+  stringifyFrontmatterData,
 } from "./frontmatter.js";
 export { defaultInstruction } from "./instruction.js";
 export {
@@ -32,10 +35,12 @@ export {
   toAbsolutePath,
 } from "./paths.js";
 export {
+  acceptTask,
   approveTask,
   claimTask,
   completeTask,
   createTask,
+  deleteTask,
   ensureProject,
   getTask,
   initProject,
@@ -45,6 +50,7 @@ export {
   releaseTask,
   resolveProject,
   scanTasks,
+  updateTask,
   writeTaskBody,
 } from "./tasks.js";
 export type {
@@ -61,5 +67,6 @@ export type {
   TaskIssue,
   TaskPriority,
   TaskStatus,
+  UpdateTaskInput,
 } from "./types.js";
 export { TASK_PRIORITIES, TASK_STATUSES } from "./types.js";
