@@ -16,6 +16,14 @@
     "dist",
     "axa"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chitootoo/agentxagent.git",
+    "directory": "packages/proto"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
     "generate": "rm -rf src/gen && buf generate",

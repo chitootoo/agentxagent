@@ -10,6 +10,14 @@
   "files": [
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chitootoo/agentxagent.git",
+    "directory": "packages/cli"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup && chmod +x dist/index.js",
     "dev": "tsx src/index.ts",
