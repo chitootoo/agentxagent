@@ -16,11 +16,13 @@ import {
   getTask,
   type ListProjectsResult,
   listRegisteredProjects,
+  maintainProject,
   parseFrontmatterData,
-  reclaimStaleTasks,
   registerProject,
+  releaseStaleTasks,
   releaseTask,
   removeRegisteredProject,
+  STALE_CLAIM_MS,
   scanTasks,
   stringifyFrontmatterData,
   updateTask,
@@ -54,12 +56,12 @@ import {
   ListTasksResponseSchema,
   type Project,
   ProjectSchema,
-  type ReclaimStaleTasksRequest,
-  type ReclaimStaleTasksResponse,
-  ReclaimStaleTasksResponseSchema,
   type RegisterProjectRequest,
   type RegisterProjectResponse,
   RegisterProjectResponseSchema,
+  type ReleaseStaleTasksRequest,
+  type ReleaseStaleTasksResponse,
+  ReleaseStaleTasksResponseSchema,
   ReleaseTaskResponseSchema,
   type RemoveProjectResponse,
   RemoveProjectResponseSchema,
@@ -87,6 +89,7 @@ const STATUS_TO_PROTO: Record<CoreTaskStatus, TaskStatus> = {
   doing: TaskStatus.DOING,
   review: TaskStatus.REVIEW,
   done: TaskStatus.DONE,
+  archived: TaskStatus.ARCHIVED,
 };
 
 function priorityFromProto(priority: TaskPriority): CoreTaskPriority {
@@ -114,6 +117,8 @@ function statusFromProto(status: TaskStatus): CoreTaskStatus | undefined {
       return "review";
     case TaskStatus.DONE:
       return "done";
+    case TaskStatus.ARCHIVED:
+      return "archived";
     default:
       return undefined;
   }
@@ -157,6 +162,7 @@ function toProject(project: ListProjectsResult): Project {
     doingCount: project.counts.doing,
     reviewCount: project.counts.review,
     doneCount: project.counts.done,
+    archivedCount: project.counts.archived,
     totalTasks: project.total,
   });
 }
@@ -188,6 +194,7 @@ function toTask(task: CoreTask): Task {
         filename: entry.filename,
         filePath: entry.filePath,
         body: entry.body,
+        agent: entry.agent ?? "",
       }),
     ),
   });
@@ -235,6 +242,13 @@ export const taskServiceImpl: ServiceImpl<typeof TaskService> = {
 
   async listTasks(req: ListTasksRequest): Promise<ListTasksResponse> {
     const project = await requireProject(req.projectId);
+    const maintenance = await maintainProject(project.path);
+    for (const task of maintenance.released) {
+      logTask(project.id, task, "release_stale", "axa");
+    }
+    for (const task of maintenance.archived) {
+      logTask(project.id, task, "archive", "axa");
+    }
     const statuses = req.statuses
       .map(statusFromProto)
       .filter((status): status is CoreTaskStatus => status !== undefined);
@@ -317,7 +331,7 @@ export const taskServiceImpl: ServiceImpl<typeof TaskService> = {
       projectRoot: project.path,
       ...(req.taskId ? { taskId: req.taskId } : {}),
       ...(req.next ? { next: true } : {}),
-      agent: req.actor.trim() || "console",
+      agentPlatform: req.actor.trim() || "console",
     });
     logTask(project.id, task, "claim", req.actor);
     return create(ClaimTaskResponseSchema, { task: toTask(task) });
@@ -325,14 +339,17 @@ export const taskServiceImpl: ServiceImpl<typeof TaskService> = {
 
   async releaseTask(req) {
     const project = await requireProject(req.projectId);
-    const task = await releaseTask(project.path, req.taskId);
+    const task = await releaseTask(project.path, req.taskId, {
+      ...(req.actor.trim() ? { actor: req.actor.trim() } : {}),
+      force: true,
+    });
     logTask(project.id, task, "release", req.actor);
     return create(ReleaseTaskResponseSchema, { task: toTask(task) });
   },
 
   async completeTask(req) {
     const project = await requireProject(req.projectId);
-    const task = await completeTask(project.path, req.taskId, req.actor);
+    const task = await completeTask(project.path, req.taskId, req.actor, { force: true });
     logTask(project.id, task, "complete", req.actor);
     return create(CompleteTaskResponseSchema, { task: toTask(task) });
   },
@@ -362,15 +379,15 @@ export const taskServiceImpl: ServiceImpl<typeof TaskService> = {
     return create(AppendTaskMessageResponseSchema, { task: toTask(task) });
   },
 
-  async reclaimStaleTasks(req: ReclaimStaleTasksRequest): Promise<ReclaimStaleTasksResponse> {
+  async releaseStaleTasks(req: ReleaseStaleTasksRequest): Promise<ReleaseStaleTasksResponse> {
     const project = await requireProject(req.projectId);
-    const seconds = req.olderThanSeconds > 0 ? req.olderThanSeconds : 86_400;
-    const result = await reclaimStaleTasks(project.path, seconds * 1000);
-    for (const task of result.reclaimed) {
-      logTask(project.id, task, "reclaim", req.actor);
+    const seconds = req.olderThanSeconds > 0 ? req.olderThanSeconds : STALE_CLAIM_MS / 1000;
+    const result = await releaseStaleTasks(project.path, seconds * 1000);
+    for (const task of result.released) {
+      logTask(project.id, task, "release_stale", req.actor);
     }
-    return create(ReclaimStaleTasksResponseSchema, {
-      reclaimed: result.reclaimed.map(toTask),
+    return create(ReleaseStaleTasksResponseSchema, {
+      released: result.released.map(toTask),
       skipped: result.skipped,
     });
   },

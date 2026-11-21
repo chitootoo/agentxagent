@@ -1,12 +1,11 @@
 "use client";
 
-import type { Activity, Project } from "@contagxt/axa-proto";
+import type { Project } from "@contagxt/axa-proto";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { taskClient } from "@/lib/client";
-import { errorMessage, formatRelativeTime, shortPath } from "@/lib/format";
-import { actionLabel } from "@/lib/task-meta";
-import { ArrowRightIcon, PlusIcon, SparkIcon, TrashIcon } from "./icons";
+import { errorMessage, shortPath } from "@/lib/format";
+import { ArrowRightIcon, PlusIcon, ProjectsIcon, TrashIcon } from "./icons";
 
 interface ProjectForm {
   path: string;
@@ -18,7 +17,6 @@ const EMPTY_FORM: ProjectForm = { path: "", name: "", initialize: false };
 
 export function ProjectsView() {
   const [projects, setProjects] = useState<Project[]>([]);
-  const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
   const [formOpen, setFormOpen] = useState(false);
@@ -31,12 +29,8 @@ export function ProjectsView() {
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
-      const [projectResponse, activityResponse] = await Promise.all([
-        taskClient.listProjects({}),
-        taskClient.listActivity({ limit: 8 }),
-      ]);
-      setProjects(projectResponse.projects);
-      setActivities(activityResponse.activities);
+      const response = await taskClient.listProjects({});
+      setProjects(response.projects);
       setError(undefined);
     } catch (cause) {
       setError(errorMessage(cause));
@@ -126,9 +120,6 @@ export function ProjectsView() {
     <div className="page-stack">
       <header className="hero">
         <div>
-          <span className="eyebrow">
-            <SparkIcon size={14} /> Local task hub
-          </span>
           <h1>
             把任务交给 Agent，
             <br />
@@ -175,7 +166,6 @@ export function ProjectsView() {
         <form className="add-project panel" onSubmit={addProject}>
           <div className="panel-heading">
             <div>
-              <span className="eyebrow">Register</span>
               <h2>纳管一个项目</h2>
             </div>
             <button
@@ -241,7 +231,7 @@ export function ProjectsView() {
         <article className="stat-card">
           <span>进行中的任务</span>
           <strong>{totals.doing}</strong>
-          <small>{totals.todo} 个 todo 等待认领</small>
+          <small>{totals.todo} 个待认领任务</small>
         </article>
         <article className="stat-card accent">
           <span>完成率</span>
@@ -252,129 +242,97 @@ export function ProjectsView() {
         </article>
       </section>
 
-      <div className="dashboard-grid">
-        <section className="panel projects-panel">
-          <div className="panel-heading">
-            <div>
-              <span className="eyebrow">Projects</span>
-              <h2>项目看板</h2>
-            </div>
-            <span className="count-pill">{projects.length} 项</span>
+      <section className="panel projects-panel" aria-label="已纳管项目">
+        <div className="panel-heading">
+          <div>
+            <h2>项目看板</h2>
           </div>
+          <span className="count-pill">{projects.length} 个项目</span>
+        </div>
 
-          {projects.length === 0 ? (
-            <div className="empty-state">
-              <span className="empty-icon">
-                <SparkIcon size={22} />
-              </span>
-              <h3>还没有纳管任何项目</h3>
-              <p>
-                在已有项目执行 <code>axa init</code>，或点击右上角添加项目。
-              </p>
-              <button className="button secondary" type="button" onClick={() => setFormOpen(true)}>
-                添加第一个项目
-              </button>
-            </div>
-          ) : (
-            <div className="project-grid">
-              {projects.map((project) => {
-                const progress =
-                  project.totalTasks > 0
-                    ? Math.round((project.doneCount / project.totalTasks) * 100)
-                    : 0;
-                return (
-                  <article
-                    className={`project-card${project.exists ? "" : " missing"}`}
-                    key={project.id}
-                  >
-                    <div className="project-top">
-                      <div>
-                        <span className="project-status">
-                          <span className={`local-dot${project.exists ? "" : " offline"}`} />
-                          {project.exists ? "Ready" : "Missing"}
-                        </span>
-                        <h3>{project.name}</h3>
-                      </div>
-                      <button
-                        aria-label={`移除 ${project.name}`}
-                        className="icon-button"
-                        disabled={removingId === project.id}
-                        onClick={() => void removeProject(project)}
-                        title="取消纳管（不删除文件）"
-                        type="button"
-                      >
-                        <TrashIcon size={15} />
-                      </button>
-                    </div>
-                    <code className="path" title={project.path}>
-                      {shortPath(project.path)}
-                    </code>
-                    <div className="progress-row">
-                      <div className="progress-track">
-                        <span style={{ width: `${progress}%` }} />
-                      </div>
-                      <span>{progress}%</span>
-                    </div>
-                    <div className="mini-counts">
-                      <span>
-                        <b>{project.backlogCount}</b> backlog
-                      </span>
-                      <span>
-                        <b>{project.todoCount}</b> todo
-                      </span>
-                      <span>
-                        <b>{project.doingCount}</b> doing
-                      </span>
-                      <span>
-                        <b>{project.doneCount}</b> done
-                      </span>
-                    </div>
-                    {project.exists ? (
-                      <Link className="card-link" href={`/projects/${project.id}`}>
-                        打开看板 <ArrowRightIcon size={15} />
-                      </Link>
-                    ) : (
-                      <span className="card-link disabled">目录不可用</span>
-                    )}
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        <aside className="panel activity-panel">
-          <div className="panel-heading">
-            <div>
-              <span className="eyebrow">Live feed</span>
-              <h2>最近动态</h2>
-            </div>
-            <Link className="text-link" href="/activity">
-              全部
-            </Link>
+        {projects.length === 0 ? (
+          <div className="empty-state">
+            <span className="empty-icon">
+              <ProjectsIcon size={22} />
+            </span>
+            <h3>还没有纳管任何项目</h3>
+            <p>
+              在已有项目执行 <code>axa init</code>，或点击右上角添加项目。
+            </p>
+            <button className="button secondary" type="button" onClick={() => setFormOpen(true)}>
+              添加第一个项目
+            </button>
           </div>
-          {activities.length === 0 ? (
-            <p className="muted-copy">批准、认领或完成任务后，动态会出现在这里。</p>
-          ) : (
-            <ol className="activity-list compact">
-              {activities.map((activity) => (
-                <li key={activity.id}>
-                  <span className="activity-dot" />
-                  <div>
-                    <p>
-                      <b>{activity.actor || "console"}</b> {actionLabel(activity.action)}
-                    </p>
-                    <span className="activity-task">{activity.taskTitle}</span>
-                    <small>
-                      {activity.projectId} · {formatRelativeTime(activity.createdAt)}
-                    </small>
+        ) : (
+          <div className="project-grid">
+            {projects.map((project) => {
+              const progress =
+                project.totalTasks > 0
+                  ? Math.round((project.doneCount / project.totalTasks) * 100)
+                  : 0;
+              return (
+                <article
+                  className={`project-card${project.exists ? "" : " missing"}`}
+                  key={project.id}
+                >
+                  <div className="project-top">
+                    <div>
+                      <span className="project-status">
+                        <span className={`local-dot${project.exists ? "" : " offline"}`} />
+                        {project.exists ? "可用" : "路径缺失"}
+                      </span>
+                      <h3>{project.name}</h3>
+                    </div>
+                    <button
+                      aria-label={`移除 ${project.name}`}
+                      className="icon-button"
+                      disabled={removingId === project.id}
+                      onClick={() => void removeProject(project)}
+                      title="取消纳管（不删除文件）"
+                      type="button"
+                    >
+                      <TrashIcon size={15} />
+                    </button>
                   </div>
-                </li>
-              ))}
-            </ol>
-          )}
-        </aside>
-      </div>
+                  <code className="path" title={project.path}>
+                    {shortPath(project.path)}
+                  </code>
+                  <div className="progress-row">
+                    <div className="progress-track">
+                      <span style={{ width: `${progress}%` }} />
+                    </div>
+                    <span>{progress}%</span>
+                  </div>
+                  <div className="mini-counts">
+                    <span>
+                      <b>{project.backlogCount}</b> 待审核
+                    </span>
+                    <span>
+                      <b>{project.todoCount}</b> 待认领
+                    </span>
+                    <span>
+                      <b>{project.doingCount}</b> 进行中
+                    </span>
+                    <span>
+                      <b>{project.reviewCount}</b> 待验收
+                    </span>
+                    <span>
+                      <b>{project.doneCount}</b> 已完成
+                    </span>
+                  </div>
+                  {project.exists ? (
+                    <Link className="card-link" href={`/projects/${project.id}`}>
+                      查看任务 <ArrowRightIcon size={15} />
+                    </Link>
+                  ) : (
+                    <span className="card-link disabled">目录不可用</span>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

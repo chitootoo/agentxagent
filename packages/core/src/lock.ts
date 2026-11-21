@@ -87,10 +87,6 @@ export async function withLock<T>(
   }
 }
 
-export function projectLockPath(projectRoot: string): string {
-  return join(projectRoot, ".axa", ".lock");
-}
-
 export function configLockPath(axaHome: string): string {
   return join(axaHome, ".config.lock");
 }

@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "id": "003",
+  "title": "构建Axa命令行工具",
+  "priority": "P0",
+  "status": "done",
+  "reviewRequired": true,
+  "createdAt": "2026-11-04T14:05:03.344Z",
+  "updatedAt": "2026-11-04T14:05:07.813Z",
+  "claimedBy": "Haoda",
+  "claimedAt": "2026-11-04T14:05:07.557Z",
+  "tags": [],
+  "extra": {
+    "created_by": "Haoda",
+    "completed_at": "2026-11-04T14:05:07.813Z",
+    "completed_by": "Haoda"
+  }
+}

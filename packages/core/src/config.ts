@@ -10,6 +10,8 @@ import {
   isAxaProject,
   pathExists,
   readProjectInfo,
+  SKILL_FILE,
+  TASKS_README_FILE,
 } from "./paths.js";
 import { initProject } from "./tasks.js";
 import type { AxaConfig, ListProjectsResult, ProjectConfig } from "./types.js";
@@ -178,8 +180,9 @@ export async function listRegisteredProjects(): Promise<ListProjectsResult[]> {
           name: project.name,
           path: project.path,
           axaPath: join(project.path, ".axa"),
-          instructionPath: join(project.path, ".axa", "instruction.md"),
-          counts: { backlog: 0, todo: 0, doing: 0, review: 0, done: 0 },
+          skillPath: join(project.path, ".axa", SKILL_FILE),
+          tasksReadmePath: join(project.path, ".axa", "tasks", TASKS_README_FILE),
+          counts: { backlog: 0, todo: 0, doing: 0, review: 0, done: 0, archived: 0 },
           total: 0,
           exists: false,
         };

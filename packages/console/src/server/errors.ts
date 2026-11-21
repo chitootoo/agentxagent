@@ -7,6 +7,7 @@ const CODE_MAP: Record<AxaError["code"], Code> = {
   INVALID_TASK: Code.InvalidArgument,
   INVALID_STATE: Code.FailedPrecondition,
   ALREADY_CLAIMED: Code.AlreadyExists,
+  FORBIDDEN: Code.PermissionDenied,
   CONFLICT: Code.Aborted,
   LOCK_TIMEOUT: Code.Aborted,
   CONFIG_ERROR: Code.Internal,

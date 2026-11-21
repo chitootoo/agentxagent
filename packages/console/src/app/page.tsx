@@ -1,5 +1,5 @@
-import { ProjectsView } from "@/components/projects-view";
+import { InboxView } from "@/components/inbox-view";
 
 export default function HomePage() {
-  return <ProjectsView />;
+  return <InboxView />;
 }

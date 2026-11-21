@@ -1,5 +1,8 @@
-export const TASK_STATUSES = ["backlog", "todo", "doing", "review", "done"] as const;
+export const TASK_STATUSES = ["backlog", "todo", "doing", "review", "done", "archived"] as const;
 export type TaskStatus = (typeof TASK_STATUSES)[number];
+
+export const ACTIVE_TASK_STATUSES = ["backlog", "todo", "doing", "review", "done"] as const;
+export type ActiveTaskStatus = (typeof ACTIVE_TASK_STATUSES)[number];
 
 export const TASK_PRIORITIES = ["P0", "P1", "P2"] as const;
 export type TaskPriority = (typeof TASK_PRIORITIES)[number];
@@ -14,6 +17,8 @@ export interface ConversationEntry {
   filename: string;
   filePath: string;
   body: string;
+  /** Agent that produced this message, recorded in the message frontmatter. */
+  agent?: string;
 }
 
 export interface Task {
@@ -45,7 +50,8 @@ export interface ProjectInfo {
   name: string;
   path: string;
   axaPath: string;
-  instructionPath: string;
+  skillPath: string;
+  tasksReadmePath: string;
   counts: Record<TaskStatus, number>;
   total: number;
 }
@@ -105,12 +111,15 @@ export interface ListTasksOptions {
   statuses?: TaskStatus[];
   priority?: TaskPriority;
   claimedBy?: string;
+  /** Archived tasks are excluded unless a status filter asks for them. */
+  includeArchived?: boolean;
 }
 
 export interface ClaimTaskInput {
   projectRoot: string;
   taskId?: string;
-  agent: string;
+  /** Agent platform name, e.g. qoder, trae, codex. The CLI mints the round id. */
+  agentPlatform: string;
   next?: boolean;
 }
 
@@ -120,9 +129,20 @@ export interface InitProjectOptions {
   instruction?: string;
 }
 
-export interface ReclaimStaleResult {
-  reclaimed: Task[];
+export interface ReleaseStaleResult {
+  released: Task[];
   skipped: number;
+}
+
+export interface ReleaseTaskOptions {
+  actor?: string;
+  /** Humans may release any claimed task; agents may only release their own. */
+  force?: boolean;
+}
+
+export interface MaintenanceResult {
+  released: Task[];
+  archived: Task[];
 }
 
 export interface TaskIssue {

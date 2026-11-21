@@ -9,7 +9,6 @@ interface ListOptions extends ProjectOption {
   status?: string;
   priority?: string;
   claimedBy?: string;
-  board?: boolean;
   json?: boolean;
 }
 
@@ -49,12 +48,11 @@ export function registerListCommand(program: Command): void {
   program
     .command("list")
     .alias("ls")
-    .description("List tasks")
+    .description("List active tasks (add --status archived to include archived tasks)")
     .option("-p, --project <path|id>", "project path or registered id")
-    .option("-s, --status <statuses>", "comma-separated backlog,todo,doing,review,done")
+    .option("-s, --status <statuses>", "comma-separated backlog,todo,doing,review,done,archived")
     .option("--priority <priority>", "P0, P1, or P2")
-    .option("--claimed-by <agent>", "only tasks claimed by an agent")
-    .option("--board", "group tasks by state")
+    .option("--claimed-by <platform>", "only tasks claimed by a platform (prefix match)")
     .option("--json", "print machine-readable JSON")
     .action(async (options: ListOptions) => {
       const { projectRoot, tasks, issues } = await load(options);
@@ -63,11 +61,7 @@ export function registerListCommand(program: Command): void {
         return;
       }
       console.log(`${pc.bold(projectRoot)} ${pc.dim(`(${tasks.length} tasks)`)}`);
-      if (options.board) {
-        printBoard(tasks);
-      } else {
-        printTaskTable(tasks);
-      }
+      printTaskTable(tasks);
       for (const issue of issues) {
         console.error(`${pc.yellow("warning:")} ${issue.filePath}: ${issue.message}`);
       }
@@ -77,14 +71,9 @@ export function registerListCommand(program: Command): void {
     .command("board")
     .description("Show the task board grouped by state")
     .option("-p, --project <path|id>", "project path or registered id")
-    .option("--json", "print machine-readable JSON")
-    .action(async (options: ProjectOption & { json?: boolean }) => {
+    .action(async (options: ProjectOption) => {
       const projectRoot = await resolveProject(options);
       const { tasks, issues } = await scanTasks(projectRoot);
-      if (options.json) {
-        console.log(JSON.stringify(tasks.map(taskJson), null, 2));
-        return;
-      }
       console.log(pc.bold(projectRoot));
       printBoard(tasks);
       for (const issue of issues) {

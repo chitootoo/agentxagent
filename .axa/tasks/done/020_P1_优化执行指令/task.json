@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "id": "020",
+  "title": "优化执行指令",
+  "priority": "P1",
+  "status": "done",
+  "reviewRequired": true,
+  "createdAt": "2026-11-20T13:55:46.410Z",
+  "updatedAt": "2026-11-21T06:27:51.424Z",
+  "tags": [],
+  "extra": {
+    "created_by": "human",
+    "updated_by": "trae_26-11-21_14:21:20.330",
+    "completed_at": "2026-11-21T06:21:35.498Z",
+    "completed_by": "trae_26-11-21_14:21:20.330",
+    "accepted_at": "2026-11-21T06:27:51.424Z",
+    "accepted_by": "human"
+  }
+}

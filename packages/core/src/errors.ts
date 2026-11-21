@@ -4,6 +4,7 @@ export type AxaErrorCode =
   | "INVALID_TASK"
   | "INVALID_STATE"
   | "ALREADY_CLAIMED"
+  | "FORBIDDEN"
   | "CONFLICT"
   | "LOCK_TIMEOUT"
   | "CONFIG_ERROR";

@@ -85,7 +85,7 @@ export function TaskFormFields({ value, onChange, autoFocus = false }: TaskFormF
           type="checkbox"
         />
         <span>
-          无需review
+          无需人工验收
           <small>默认任务完成后进入“待验收”，人工验收通过才计入完成；勾选后直接完成。</small>
         </span>
       </label>

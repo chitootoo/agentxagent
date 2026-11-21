@@ -11,7 +11,7 @@ function svgProps({ size = 18, className }: IconProps) {
     viewBox: "0 0 24 24",
     fill: "none",
     stroke: "currentColor",
-    strokeWidth: 1.8,
+    strokeWidth: 1.6,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
     className,
@@ -26,6 +26,42 @@ export function ProjectsIcon(props: IconProps) {
       <rect x="14" y="3" width="7" height="7" rx="1.5" />
       <rect x="3" y="14" width="7" height="7" rx="1.5" />
       <rect x="14" y="14" width="7" height="7" rx="1.5" />
+    </svg>
+  );
+}
+
+export function ChatIcon(props: IconProps) {
+  return (
+    <svg {...svgProps(props)}>
+      <path d="M20 12a7.5 7.5 0 0 1-8 7.5 9 9 0 0 1-3.2-.7L4 20l1.2-4.1A7.2 7.2 0 0 1 4 12a7.5 7.5 0 0 1 8-7.5A7.5 7.5 0 0 1 20 12Z" />
+      <path d="M8.5 12h.01M12 12h.01M15.5 12h.01" />
+    </svg>
+  );
+}
+
+export function SendIcon(props: IconProps) {
+  return (
+    <svg {...svgProps(props)}>
+      <path d="m4 11 16-7-7 16-2.5-6.5L4 11Z" />
+      <path d="m10.5 13.5 4-4" />
+    </svg>
+  );
+}
+
+export function MoreIcon(props: IconProps) {
+  return (
+    <svg {...svgProps(props)}>
+      <circle cx="5" cy="12" r="1" />
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="19" cy="12" r="1" />
+    </svg>
+  );
+}
+
+export function CloseIcon(props: IconProps) {
+  return (
+    <svg {...svgProps(props)}>
+      <path d="m6 6 12 12M18 6 6 18" />
     </svg>
   );
 }
@@ -113,11 +149,29 @@ export function TrashIcon(props: IconProps) {
   );
 }
 
-export function SparkIcon(props: IconProps) {
+export function PencilIcon(props: IconProps) {
   return (
     <svg {...svgProps(props)}>
-      <path d="M12 3v4m0 10v4M3 12h4m10 0h4M5.6 5.6l2.8 2.8m7.2 7.2 2.8 2.8m0-12.8-2.8 2.8m-7.2 7.2-2.8 2.8" />
-      <circle cx="12" cy="12" r="3" />
+      <path d="M4 20h4L19 9l-4-4L4 16v4Z" />
+      <path d="m13.5 6.5 4 4" />
+    </svg>
+  );
+}
+
+export function FileTextIcon(props: IconProps) {
+  return (
+    <svg {...svgProps(props)}>
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" />
+      <path d="M14 3v5h5M9 13h6M9 17h4" />
+    </svg>
+  );
+}
+
+export function ArchiveIcon(props: IconProps) {
+  return (
+    <svg {...svgProps(props)}>
+      <rect x="3" y="4" width="18" height="4" rx="1" />
+      <path d="M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M10 12h4" />
     </svg>
   );
 }

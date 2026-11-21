@@ -14,10 +14,11 @@ import {
   initProject,
   listRegisteredProjects,
   listTasks,
+  maintainProject,
   readConfig,
   readProjectInfo,
-  reclaimStaleTasks,
   registerProject,
+  releaseStaleTasks,
   releaseTask,
   removeRegisteredProject,
   resolveCliProject,
@@ -56,14 +57,14 @@ afterEach(async () => {
 });
 
 describe("initProject", () => {
-  it("creates the directory contract and preserves a custom instruction", async () => {
-    const instructionPath = join(projectRoot, ".axa", "instruction.md");
-    const instruction = await readFile(instructionPath, "utf8");
-    expect(instruction).toContain("axa 行动指南");
+  it("creates the directory contract and preserves a custom skill", async () => {
+    const skillFile = join(projectRoot, ".axa", "SKILL.md");
+    const skill = await readFile(skillFile, "utf8");
+    expect(skill).toContain("axa 行动指南");
 
-    await writeFile(instructionPath, "# custom\n", "utf8");
+    await writeFile(skillFile, "# custom\n", "utf8");
     await initProject({ projectRoot });
-    expect(await readFile(instructionPath, "utf8")).toBe("# custom\n");
+    expect(await readFile(skillFile, "utf8")).toBe("# custom\n");
   });
 });
 
@@ -206,7 +207,11 @@ describe("task folders", () => {
     expect(task.legacy).toBe(true);
     expect(task.reviewRequired).toBe(true);
 
-    const claimed = await claimTask({ projectRoot, taskId: task.id, agent: "worker" });
+    const claimed = await claimTask({
+      projectRoot,
+      taskId: task.id,
+      agentPlatform: "worker",
+    });
     expect(claimed.legacy).toBe(false);
     expect(claimed.filePath).toBe(taskDir("doing", "009_P1_Handwritten_task"));
     expect(claimed.conversation).toHaveLength(1);
@@ -243,21 +248,63 @@ describe("task lifecycle", () => {
     const claimed = await claimTask({
       projectRoot,
       taskId: created.id,
-      agent: "worker-a",
+      agentPlatform: "worker-a",
     });
     expect(claimed.status).toBe("doing");
-    expect(claimed.claimedBy).toBe("worker-a");
+    expect(claimed.claimedBy).toMatch(/^worker-a_\d{2}-\d{2}-\d{2}_\d{2}:\d{2}:\d{2}\.\d{3}$/u);
     expect(claimed.claimedAt).toBeTruthy();
     expect(claimed.filePath).toContain("/doing/");
+    expect((await readdir(claimed.filePath)).includes(".lock")).toBe(false);
 
     await expect(
-      claimTask({ projectRoot, taskId: created.id, agent: "worker-b" }),
+      claimTask({ projectRoot, taskId: created.id, agentPlatform: "worker-b" }),
     ).rejects.toMatchObject({ code: "ALREADY_CLAIMED" });
 
-    const done = await completeTask(projectRoot, created.id, "worker-a");
+    await summarizeTask(projectRoot, created.id, "Implemented.");
+    const done = await completeTask(projectRoot, created.id);
     expect(done.status).toBe("done");
     expect(done.filePath).toContain("/done/");
-    expect(done.extra.completed_by).toBe("worker-a");
+    expect(done.extra.completed_by).toBe(claimed.claimedBy);
+    expect(done.claimedBy).toBeUndefined();
+  });
+
+  it("requires a summary even when review is not required", async () => {
+    const created = await createTask({
+      projectRoot,
+      title: "No review but summarize",
+      status: "todo",
+      reviewRequired: false,
+    });
+    const claimed = await claimTask({
+      projectRoot,
+      taskId: created.id,
+      agentPlatform: "worker-a",
+    });
+    await expect(completeTask(projectRoot, created.id, claimed.claimedBy)).rejects.toThrow(
+      /axa summary .* --file/u,
+    );
+  });
+
+  it("lets the claimer release a task", async () => {
+    const created = await createTask({
+      projectRoot,
+      title: "Release owner check",
+      status: "todo",
+    });
+    const claimed = await claimTask({
+      projectRoot,
+      taskId: created.id,
+      agentPlatform: "worker-a",
+    });
+
+    await expect(releaseTask(projectRoot, created.id, { actor: "worker-b" })).rejects.toMatchObject(
+      { code: "FORBIDDEN" },
+    );
+
+    const released = await releaseTask(projectRoot, created.id, {
+      actor: claimed.claimedBy as string,
+    });
+    expect(released.status).toBe("todo");
   });
 
   it("releases a claimed task back to todo", async () => {
@@ -266,7 +313,7 @@ describe("task lifecycle", () => {
       title: "Release me",
       status: "todo",
     });
-    await claimTask({ projectRoot, taskId: created.id, agent: "worker-a" });
+    await claimTask({ projectRoot, taskId: created.id, agentPlatform: "worker-a" });
 
     const released = await releaseTask(projectRoot, created.id);
     expect(released.status).toBe("todo");
@@ -276,7 +323,9 @@ describe("task lifecycle", () => {
 
   it("rejects invalid transitions", async () => {
     const created = await createTask({ projectRoot, title: "Not approved yet" });
-    await expect(claimTask({ projectRoot, taskId: created.id, agent: "a" })).rejects.toMatchObject({
+    await expect(
+      claimTask({ projectRoot, taskId: created.id, agentPlatform: "a" }),
+    ).rejects.toMatchObject({
       code: "INVALID_STATE",
     });
     await expect(completeTask(projectRoot, created.id)).rejects.toMatchObject({
@@ -293,7 +342,7 @@ describe("task lifecycle", () => {
       status: "todo",
     });
 
-    const claimed = await claimTask({ projectRoot, agent: "worker", next: true });
+    const claimed = await claimTask({ projectRoot, agentPlatform: "worker", next: true });
     expect(claimed.id).toBe(high.id);
   });
 
@@ -306,7 +355,7 @@ describe("task lifecycle", () => {
 
     const results = await Promise.allSettled(
       Array.from({ length: 8 }, (_, index) =>
-        claimTask({ projectRoot, taskId: created.id, agent: `worker-${index}` }),
+        claimTask({ projectRoot, taskId: created.id, agentPlatform: `worker-${index}` }),
       ),
     );
 
@@ -317,7 +366,7 @@ describe("task lifecycle", () => {
     expect(task.claimedBy).toMatch(/^worker-/);
   });
 
-  it("reclaims tasks whose claim is older than the threshold", async () => {
+  it("releases tasks whose claim is older than the threshold", async () => {
     const created = await createTask({
       projectRoot,
       title: "Stale task",
@@ -326,7 +375,7 @@ describe("task lifecycle", () => {
     const claimed = await claimTask({
       projectRoot,
       taskId: created.id,
-      agent: "sleepy-agent",
+      agentPlatform: "sleepy-agent",
     });
 
     const metadataPath = join(claimed.filePath, "task.json");
@@ -335,10 +384,10 @@ describe("task lifecycle", () => {
     metadata.claimedAt = oldDate;
     await writeFile(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
 
-    const result = await reclaimStaleTasks(projectRoot, 24 * 60 * 60 * 1000);
-    expect(result.reclaimed).toHaveLength(1);
-    expect(result.reclaimed[0]?.status).toBe("todo");
-    expect(result.reclaimed[0]?.claimedBy).toBeUndefined();
+    const result = await releaseStaleTasks(projectRoot, 24 * 60 * 60 * 1000);
+    expect(result.released).toHaveLength(1);
+    expect(result.released[0]?.status).toBe("todo");
+    expect(result.released[0]?.claimedBy).toBeUndefined();
   });
 });
 
@@ -350,7 +399,7 @@ describe("review workflow", () => {
       status: "todo",
       reviewRequired,
     });
-    return claimTask({ projectRoot, taskId: created.id, agent: "worker-a" });
+    return claimTask({ projectRoot, taskId: created.id, agentPlatform: "worker-a" });
   }
 
   it("defaults reviewRequired to true", async () => {
@@ -362,7 +411,7 @@ describe("review workflow", () => {
 
   it("requires an agent summary before a review-required task can complete", async () => {
     const claimed = await claimableReviewTask(true);
-    await expect(completeTask(projectRoot, claimed.id, "worker-a")).rejects.toMatchObject({
+    await expect(completeTask(projectRoot, claimed.id, claimed.claimedBy)).rejects.toMatchObject({
       code: "INVALID_TASK",
     });
 
@@ -370,33 +419,35 @@ describe("review workflow", () => {
       projectRoot,
       claimed.id,
       "## 本轮完成\n\n实现并通过测试。",
-      "worker-a",
     );
     expect(summarized.conversation.at(-1)?.role).toBe("agent");
+    expect(summarized.conversation.at(-1)?.agent).toBe(claimed.claimedBy);
 
-    const completed = await completeTask(projectRoot, claimed.id, "worker-a");
+    const completed = await completeTask(projectRoot, claimed.id);
     expect(completed.status).toBe("review");
     expect(completed.filePath).toContain("/review/");
     expect(completed.reviewRequired).toBe(true);
-    expect(completed.extra.completed_by).toBe("worker-a");
+    expect(completed.extra.completed_by).toBe(claimed.claimedBy);
     expect(completed.extra.completed_at).toBeTruthy();
+    expect(completed.claimedBy).toBeUndefined();
 
     await expect(
-      claimTask({ projectRoot, taskId: claimed.id, agent: "worker-b" }),
+      claimTask({ projectRoot, taskId: claimed.id, agentPlatform: "worker-b" }),
     ).rejects.toMatchObject({ code: "INVALID_STATE" });
   });
 
   it("completes straight to done when review is not required", async () => {
     const claimed = await claimableReviewTask(false);
-    const done = await completeTask(projectRoot, claimed.id, "worker-a");
+    await summarizeTask(projectRoot, claimed.id, "Done.");
+    const done = await completeTask(projectRoot, claimed.id);
     expect(done.status).toBe("done");
     expect(done.filePath).toContain("/done/");
   });
 
   it("accepts a review task into done and records the reviewer", async () => {
     const claimed = await claimableReviewTask(true);
-    await summarizeTask(projectRoot, claimed.id, "Done.", "worker-a");
-    await completeTask(projectRoot, claimed.id, "worker-a");
+    await summarizeTask(projectRoot, claimed.id, "Done.");
+    await completeTask(projectRoot, claimed.id);
 
     const accepted = await acceptTask(projectRoot, claimed.id, "human");
     expect(accepted.status).toBe("done");
@@ -433,8 +484,8 @@ describe("review workflow", () => {
 
   it("counts review tasks in project info", async () => {
     const claimed = await claimableReviewTask(true);
-    await summarizeTask(projectRoot, claimed.id, "Done.", "worker-a");
-    await completeTask(projectRoot, claimed.id, "worker-a");
+    await summarizeTask(projectRoot, claimed.id, "Done.");
+    await completeTask(projectRoot, claimed.id);
     const info = await readProjectInfo(projectRoot);
     expect(info.counts.review).toBe(1);
     expect(info.counts.done).toBe(0);
@@ -450,9 +501,14 @@ describe("task iteration", () => {
       body: "First requirement.",
       status: "todo",
     });
-    await claimTask({ projectRoot, taskId: created.id, agent: "worker-a" });
-    await summarizeTask(projectRoot, created.id, "Round one done.", "worker-a");
-    const inReview = await completeTask(projectRoot, created.id, "worker-a");
+    const first = await claimTask({
+      projectRoot,
+      taskId: created.id,
+      agentPlatform: "worker-a",
+    });
+    const firstAgent = first.claimedBy as string;
+    await summarizeTask(projectRoot, created.id, "Round one done.");
+    const inReview = await completeTask(projectRoot, created.id);
     expect(inReview.status).toBe("review");
 
     const reopened = await commentTask(projectRoot, created.id, "请补充错误处理。", "human");
@@ -469,14 +525,35 @@ describe("task iteration", () => {
     expect(reopened.extra.completed_at).toBeUndefined();
     expect(reopened.extra.completed_by).toBeUndefined();
 
-    await claimTask({ projectRoot, taskId: created.id, agent: "worker-b" });
-    await expect(completeTask(projectRoot, created.id, "worker-b")).rejects.toMatchObject({
+    const second = await claimTask({
+      projectRoot,
+      taskId: created.id,
+      agentPlatform: "worker-b",
+    });
+    const secondAgent = second.claimedBy as string;
+    expect(secondAgent).not.toBe(firstAgent);
+    await expect(completeTask(projectRoot, created.id, secondAgent)).rejects.toMatchObject({
       code: "INVALID_TASK",
     });
-    await summarizeTask(projectRoot, created.id, "Round two done.", "worker-b");
-    const completed = await completeTask(projectRoot, created.id, "worker-b");
+    await summarizeTask(projectRoot, created.id, "Round two done.");
+    const completed = await completeTask(projectRoot, created.id);
     expect(completed.status).toBe("review");
     expect(completed.conversation.map((entry) => entry.seq)).toEqual(["000", "001", "002", "003"]);
+    expect(completed.conversation[1]?.agent).toBe(firstAgent);
+    expect(completed.conversation[3]?.agent).toBe(secondAgent);
+
+    const roundOne = await readFile(
+      join(completed.filePath, "001_agent_Round_one_done.md"),
+      "utf8",
+    );
+    const roundTwo = await readFile(
+      join(completed.filePath, "003_agent_Round_two_done.md"),
+      "utf8",
+    );
+    expect(roundOne).toContain(`agent: ${firstAgent}`);
+    expect(roundTwo).toContain(`agent: ${secondAgent}`);
+    expect(roundOne).not.toContain(secondAgent);
+    expect(roundTwo).not.toContain(firstAgent);
 
     const files = await readdir(completed.filePath);
     expect(files.sort()).toEqual([
@@ -488,6 +565,41 @@ describe("task iteration", () => {
     ]);
   });
 
+  it("derives concise conversation titles and prefers explicit titles", async () => {
+    const created = await createTask({
+      projectRoot,
+      title: "Title quality",
+      status: "todo",
+    });
+    const commented = await commentTask(
+      projectRoot,
+      created.id,
+      "关于 agent 注册，现在 agent id 是进程级别(是吗?)；我觉得应该是轮次级别，每轮唯一。\n\n后续细节不应进入标题。",
+    );
+    const userEntry = commented.conversation.at(-1);
+    expect(userEntry?.title).not.toContain("后续细节");
+    expect(userEntry?.title.length).toBeLessThanOrEqual(40);
+
+    await claimTask({ projectRoot, taskId: created.id, agentPlatform: "worker" });
+    const auto = await summarizeTask(
+      projectRoot,
+      created.id,
+      "## 本轮实现\n\n优化会话记录标题的生成逻辑，避免泛化标题。\n",
+    );
+    const autoEntry = auto.conversation.at(-1);
+    expect(autoEntry?.title).not.toBe("本轮实现");
+    expect(autoEntry?.title).toContain("优化会话记录标题");
+
+    const explicit = await summarizeTask(
+      projectRoot,
+      created.id,
+      "## 本轮实现\n\n正文。\n",
+      undefined,
+      "新增 --title 参数",
+    );
+    expect(explicit.conversation.at(-1)?.title).toBe("新增 --title 参数");
+  });
+
   it("reopens a completed task when the user asks for more work", async () => {
     const created = await createTask({
       projectRoot,
@@ -495,13 +607,79 @@ describe("task iteration", () => {
       status: "todo",
       reviewRequired: false,
     });
-    await claimTask({ projectRoot, taskId: created.id, agent: "worker" });
-    const done = await completeTask(projectRoot, created.id, "worker");
+    await claimTask({ projectRoot, taskId: created.id, agentPlatform: "worker" });
+    await summarizeTask(projectRoot, created.id, "Done.");
+    const done = await completeTask(projectRoot, created.id);
     expect(done.status).toBe("done");
 
     const reopened = await commentTask(projectRoot, created.id, "再加一个边界用例。");
     expect(reopened.status).toBe("todo");
-    expect(reopened.conversation).toHaveLength(2);
+    expect(reopened.conversation).toHaveLength(3);
+  });
+});
+
+describe("archive lifecycle", () => {
+  const DAY = 24 * 60 * 60 * 1000;
+
+  async function completedTask() {
+    const created = await createTask({
+      projectRoot,
+      title: "Archive me",
+      status: "todo",
+      reviewRequired: false,
+    });
+    await claimTask({ projectRoot, taskId: created.id, agentPlatform: "worker" });
+    await summarizeTask(projectRoot, created.id, "Done.");
+    return completeTask(projectRoot, created.id);
+  }
+
+  it("archives done tasks after 30 days and hides them by default", async () => {
+    const done = await completedTask();
+    const metadata = await readMetadata(done.filePath);
+    const extra = metadata.extra as Record<string, unknown>;
+    metadata.extra = { ...extra, completed_at: new Date(Date.now() - 31 * DAY).toISOString() };
+    await writeFile(
+      join(done.filePath, "task.json"),
+      `${JSON.stringify(metadata, null, 2)}\n`,
+      "utf8",
+    );
+
+    const result = await maintainProject(projectRoot);
+    expect(result.archived).toHaveLength(1);
+
+    const archived = await getTask(projectRoot, done.id);
+    expect(archived.status).toBe("archived");
+    expect(archived.filePath).toContain("/archived/");
+    expect(archived.extra.archived_by).toBe("auto");
+
+    const active = await listTasks(projectRoot);
+    expect(active.some((task) => task.id === done.id)).toBe(false);
+
+    const all = await listTasks(projectRoot, { includeArchived: true });
+    expect(all.find((task) => task.id === done.id)?.status).toBe("archived");
+  });
+
+  it("reopens an archived task when a human appends a requirement", async () => {
+    const done = await completedTask();
+    await maintainProject(projectRoot, { archiveAfterMs: 0 });
+
+    const archived = await getTask(projectRoot, done.id);
+    expect(archived.status).toBe("archived");
+
+    const reopened = await commentTask(projectRoot, done.id, "再补一个用例。", "human");
+    expect(reopened.status).toBe("todo");
+    expect(reopened.filePath).toContain("/todo/");
+    expect(reopened.extra.archived_at).toBeUndefined();
+    expect(reopened.extra.archived_by).toBeUndefined();
+    expect(reopened.extra.completed_at).toBeUndefined();
+  });
+
+  it("counts archived tasks in project info", async () => {
+    await completedTask();
+    await maintainProject(projectRoot, { archiveAfterMs: 0 });
+    const info = await readProjectInfo(projectRoot);
+    expect(info.counts.archived).toBe(1);
+    expect(info.counts.done).toBe(0);
   });
 });
 

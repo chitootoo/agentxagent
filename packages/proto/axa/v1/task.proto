@@ -25,6 +25,8 @@ message ConversationEntry {
   string filename = 4;
   string file_path = 5;
   string body = 6;
+  // Agent id that produced this message; empty for user messages or legacy entries.
+  string agent = 7;
 }
 
 // TaskStatus maps directly to the .axa/ directory that owns the task file.
@@ -36,6 +38,8 @@ enum TaskStatus {
   TASK_STATUS_DONE = 4;
   // Work is finished but a human must accept it before it counts as done.
   TASK_STATUS_REVIEW = 5;
+  // Terminal state; humans can reopen it by appending a requirement.
+  TASK_STATUS_ARCHIVED = 6;
 }
 
 message Project {
@@ -50,6 +54,7 @@ message Project {
   int32 done_count = 9;
   int32 total_tasks = 10;
   int32 review_count = 11;
+  int32 archived_count = 12;
 }
 
 message Task {
@@ -246,14 +251,14 @@ message AppendTaskMessageResponse {
   Task task = 1;
 }
 
-message ReclaimStaleTasksRequest {
+message ReleaseStaleTasksRequest {
   string project_id = 1;
   uint32 older_than_seconds = 2;
   string actor = 3;
 }
 
-message ReclaimStaleTasksResponse {
-  repeated Task reclaimed = 1;
+message ReleaseStaleTasksResponse {
+  repeated Task released = 1;
   int32 skipped = 2;
 }
 
@@ -283,6 +288,6 @@ service TaskService {
   rpc CompleteTask(CompleteTaskRequest) returns (CompleteTaskResponse);
   rpc AcceptTask(AcceptTaskRequest) returns (AcceptTaskResponse);
   rpc AppendTaskMessage(AppendTaskMessageRequest) returns (AppendTaskMessageResponse);
-  rpc ReclaimStaleTasks(ReclaimStaleTasksRequest) returns (ReclaimStaleTasksResponse);
+  rpc ReleaseStaleTasks(ReleaseStaleTasksRequest) returns (ReleaseStaleTasksResponse);
   rpc ListActivity(ListActivityRequest) returns (ListActivityResponse);
 }

@@ -1,12 +1,12 @@
 import { claimTask } from "@contagxt/axa-core";
 import type { Command } from "commander";
 import pc from "picocolors";
-import { type ProjectOption, resolveAgent, resolveProject } from "../context.js";
+import { type ProjectOption, resolveProject } from "../context.js";
 import { taskJson } from "../format.js";
 
 interface ClaimOptions extends ProjectOption {
-  agent?: string;
   next?: boolean;
+  agent: string;
   json?: boolean;
 }
 
@@ -14,11 +14,11 @@ export function registerClaimCommand(program: Command): void {
   program
     .command("claim")
     .alias("start")
-    .description("Atomically claim a todo task")
-    .argument("[id]", "task id or filename")
+    .description("Atomically claim a todo task and mint this round's agent id")
+    .argument("[id]", "task id or folder name")
     .option("-p, --project <path|id>", "project path or registered id")
+    .requiredOption("-a, --agent <platform>", "your agent platform name, e.g. qoder, trae, codex")
     .option("--next", "claim the highest-priority todo task")
-    .option("-a, --agent <name>", "agent identity (or set AXA_AGENT)")
     .option("--json", "print machine-readable JSON")
     .action(async (id: string | undefined, options: ClaimOptions) => {
       if (!id && !options.next) {
@@ -28,11 +28,10 @@ export function registerClaimCommand(program: Command): void {
         throw new Error("Pass either a task id or --next, not both.");
       }
       const projectRoot = await resolveProject(options);
-      const agent = resolveAgent(options.agent);
       const task = await claimTask({
         projectRoot,
         ...(id ? { taskId: id } : { next: true }),
-        agent,
+        agentPlatform: options.agent,
       });
 
       if (options.json) {
@@ -40,7 +39,7 @@ export function registerClaimCommand(program: Command): void {
         return;
       }
       console.log(`${pc.green("✓")} Claimed ${pc.bold(task.id)} ${task.title}`);
-      console.log(`  Agent: ${pc.bold(agent)}`);
+      console.log(`  Agent: ${pc.bold(task.claimedBy ?? "unknown")}`);
       console.log(`  File:  ${task.filePath}`);
     });
 }

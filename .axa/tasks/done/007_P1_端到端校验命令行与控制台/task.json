@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "id": "007",
+  "title": "端到端校验命令行与控制台",
+  "priority": "P1",
+  "status": "done",
+  "reviewRequired": true,
+  "createdAt": "2026-11-04T14:05:13.195Z",
+  "updatedAt": "2026-11-04T14:06:20.439Z",
+  "claimedBy": "Haoda",
+  "claimedAt": "2026-11-04T14:06:20.411Z",
+  "tags": [],
+  "extra": {
+    "created_by": "Haoda",
+    "approved_by": "Haoda",
+    "approved_at": "2026-11-04T14:06:12.479Z",
+    "completed_at": "2026-11-04T14:06:20.440Z",
+    "completed_by": "Haoda"
+  }
+}

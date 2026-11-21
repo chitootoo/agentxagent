@@ -7,7 +7,8 @@ import { TASK_STATUSES } from "./types.js";
 
 export const AXA_DIR = ".axa";
 export const TASKS_DIR = "tasks";
-export const INSTRUCTION_FILE = "instruction.md";
+export const SKILL_FILE = "SKILL.md";
+export const TASKS_README_FILE = "README.md";
 
 export function projectAxaDir(projectRoot: string): string {
   return join(projectRoot, AXA_DIR);
@@ -17,8 +18,12 @@ export function statusDir(projectRoot: string, status: TaskStatus): string {
   return join(projectAxaDir(projectRoot), TASKS_DIR, status);
 }
 
-export function instructionPath(projectRoot: string): string {
-  return join(projectAxaDir(projectRoot), INSTRUCTION_FILE);
+export function skillPath(projectRoot: string): string {
+  return join(projectAxaDir(projectRoot), SKILL_FILE);
+}
+
+export function tasksReadmePath(projectRoot: string): string {
+  return join(projectAxaDir(projectRoot), TASKS_DIR, TASKS_README_FILE);
 }
 
 export async function pathExists(path: string): Promise<boolean> {
@@ -118,6 +123,7 @@ export async function readProjectInfo(projectRoot: string): Promise<ProjectInfo>
     doing: 0,
     review: 0,
     done: 0,
+    archived: 0,
   } satisfies Record<TaskStatus, number>;
 
   await Promise.all(
@@ -140,7 +146,8 @@ export async function readProjectInfo(projectRoot: string): Promise<ProjectInfo>
     name: basename(projectRoot),
     path: projectRoot,
     axaPath: projectAxaDir(projectRoot),
-    instructionPath: instructionPath(projectRoot),
+    skillPath: skillPath(projectRoot),
+    tasksReadmePath: tasksReadmePath(projectRoot),
     counts,
     total,
   };

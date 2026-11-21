@@ -1,5 +1,6 @@
+import { randomUUID } from "node:crypto";
 import type { Dirent } from "node:fs";
-import { readdir, readFile, rename, rm, stat, unlink } from "node:fs/promises";
+import { open, readdir, readFile, rename, rm, stat, unlink } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { AxaError } from "./errors.js";
 import {
@@ -15,22 +16,25 @@ import {
   parseTaskDocument,
   parseTaskFilename,
   parseTaskFolderName,
+  serializeTaskDocument,
   slugifyTitle,
   stringArray,
   stringValue,
 } from "./frontmatter.js";
 import { writeFileAtomic } from "./fs-utils.js";
-import { defaultInstruction } from "./instruction.js";
-import { projectLockPath, withLock } from "./lock.js";
+import { defaultInstruction, defaultTasksReadme } from "./instruction.js";
+import { withLock } from "./lock.js";
 import {
   assertAxaProject,
   ensureTaskDirs,
-  instructionPath,
   isAxaProject,
   pathExists,
+  projectAxaDir,
   readProjectInfo,
   resolveProjectRoot,
+  skillPath,
   statusDir,
+  tasksReadmePath,
 } from "./paths.js";
 import type {
   AppendTaskMessageInput,
@@ -39,17 +43,25 @@ import type {
   CreateTaskInput,
   InitProjectOptions,
   ListTasksOptions,
+  MaintenanceResult,
   ProjectInfo,
-  ReclaimStaleResult,
+  ReleaseStaleResult,
+  ReleaseTaskOptions,
   Task,
   TaskIssue,
   TaskPriority,
   TaskStatus,
   UpdateTaskInput,
 } from "./types.js";
-import { TASK_PRIORITIES, TASK_STATUSES } from "./types.js";
+import { ACTIVE_TASK_STATUSES, TASK_PRIORITIES, TASK_STATUSES } from "./types.js";
 
 export const TASK_METADATA_FILE = "task.json";
+export const TASK_LOCK_FILE = ".lock";
+export const STALE_CLAIM_MS = 7 * 24 * 60 * 60 * 1000;
+export const ARCHIVE_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
+
+const TASK_LOCK_TIMEOUT_MS = 10_000;
+const TASK_LOCK_STALE_MS = 30_000;
 
 const CORE_FRONTMATTER_KEYS = new Set([
   "id",
@@ -102,6 +114,28 @@ function priorityRank(priority: TaskPriority): number {
   return TASK_PRIORITIES.indexOf(priority);
 }
 
+const AGENT_PLATFORM_PATTERN = /[^a-z0-9-]+/gu;
+
+/** Mint a per-round agent id: `{platform}_{yy-MM-dd_HH:mm:ss.SSS}`. */
+export function buildAgentId(platform: string, at: Date = new Date()): string {
+  const clean =
+    platform
+      .trim()
+      .toLowerCase()
+      .replace(AGENT_PLATFORM_PATTERN, "-")
+      .replace(/^-+|-+$/gu, "")
+      .slice(0, 32) || "agent";
+  const pad = (value: number) => String(value).padStart(2, "0");
+  const millis = String(at.getMilliseconds()).padStart(3, "0");
+  return `${clean}_${pad(at.getFullYear() % 100)}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}_${pad(at.getHours())}:${pad(at.getMinutes())}:${pad(at.getSeconds())}.${millis}`;
+}
+
+function claimedByMatches(claimedBy: string | undefined, filter: string): boolean {
+  if (!claimedBy) return false;
+  const value = filter.trim();
+  return claimedBy === value || claimedBy.startsWith(`${value}_`);
+}
+
 function sortTasks(tasks: Task[]): Task[] {
   return tasks.sort((a, b) => {
     const priority = priorityRank(a.priority) - priorityRank(b.priority);
@@ -145,12 +179,72 @@ function isoDateIfPresent(value: unknown): string | undefined {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
 }
 
+const GENERIC_MESSAGE_TITLES = new Set([
+  "本轮实现",
+  "本轮完成",
+  "本轮总结",
+  "实现",
+  "完成",
+  "总结",
+  "方案评估",
+  "评估",
+  "变更",
+  "修改",
+  "更新",
+  "修复",
+  "说明",
+  "交付",
+  "summary",
+  "implementation",
+  "changes",
+  "done",
+  "completed",
+  "evaluation",
+  "review",
+  "update",
+  "fix",
+  "delivery",
+]);
+
+function normalizeTitleKey(title: string): string {
+  return title.replace(/[\s:：,，.。!！?？;；_-]+/gu, "").toLowerCase();
+}
+
+function isGenericMessageTitle(title: string): boolean {
+  return GENERIC_MESSAGE_TITLES.has(normalizeTitleKey(title));
+}
+
+function firstSentence(text: string): string {
+  const [sentence = text] = text.split(/(?<=[。！？!?])\s*/u);
+  if (sentence.length <= 40) {
+    return sentence.trim();
+  }
+  const clipped = sentence.slice(0, 40);
+  const boundary = Math.max(
+    clipped.lastIndexOf("，"),
+    clipped.lastIndexOf("："),
+    clipped.lastIndexOf("；"),
+    clipped.lastIndexOf(", "),
+    clipped.lastIndexOf(" "),
+  );
+  return (boundary >= 12 ? clipped.slice(0, boundary) : clipped).trim();
+}
+
 function defaultConversationTitle(body: string, fallback: string): string {
-  const firstLine = body
-    .split(/\r?\n/u)
-    .map((line) => line.replace(/^[#>*_\-\s]+/u, "").trim())
-    .find(Boolean);
-  return firstLine ? slugifyTitle(firstLine) : slugifyTitle(fallback);
+  let candidate: string | undefined;
+  for (const rawLine of body.split(/\r?\n/u)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const heading = /^#{1,6}\s+(.+?)\s*#*$/u.exec(line);
+    const text = (heading?.[1] ?? line)
+      .replace(/^[>*_\-\s]+/u, "")
+      .replace(/\s+/gu, " ")
+      .trim();
+    if (!text || isGenericMessageTitle(text)) continue;
+    candidate = text;
+    break;
+  }
+  return slugifyTitle(firstSentence(candidate ?? fallback));
 }
 
 function taskMetadata(task: Task): TaskMetadata {
@@ -188,14 +282,16 @@ async function readConversation(dirPath: string): Promise<ConversationEntry[]> {
     const parsed = parseMessageFilename(entry.name);
     if (!parsed) continue;
     const filePath = join(dirPath, entry.name);
-    const body = (await readFile(filePath, "utf8")).trim();
+    const document = parseTaskDocument(await readFile(filePath, "utf8"));
+    const agent = stringValue(document.data.agent);
     conversation.push({
       seq: parsed.seq,
       role: parsed.role,
       title: parsed.title,
       filename: entry.name,
       filePath,
-      body,
+      body: document.body,
+      ...(agent && parsed.role === "agent" ? { agent } : {}),
     });
   }
   return conversation.sort((a, b) => a.seq.localeCompare(b.seq));
@@ -366,13 +462,14 @@ export async function scanTasks(
   options: ListTasksOptions = {},
 ): Promise<{ tasks: Task[]; issues: TaskIssue[] }> {
   await assertAxaProject(projectRoot);
-  const statuses = options.statuses ?? TASK_STATUSES;
+  const statuses =
+    options.statuses ?? (options.includeArchived ? TASK_STATUSES : ACTIVE_TASK_STATUSES);
   const results = await Promise.all(statuses.map((status) => readStatusTasks(projectRoot, status)));
   const tasks = results.flatMap((result) => result.tasks);
   const filtered = tasks.filter(
     (task) =>
       (!options.priority || task.priority === options.priority) &&
-      (!options.claimedBy || task.claimedBy === options.claimedBy),
+      (!options.claimedBy || claimedByMatches(task.claimedBy, options.claimedBy)),
   );
   return {
     tasks: sortTasks(filtered),
@@ -433,6 +530,163 @@ export async function getTask(projectRoot: string, taskId: string): Promise<Task
   return (await findTaskLocation(projectRoot, taskId)).task;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function legacyMigrationLockPath(projectRoot: string): string {
+  return join(projectAxaDir(projectRoot), "tasks", ".migrate.lock");
+}
+
+export function createLockPath(projectRoot: string): string {
+  return join(projectAxaDir(projectRoot), "tasks", ".create.lock");
+}
+
+interface TaskLock {
+  token: string;
+  agent: string;
+  path: string;
+}
+
+interface TaskTransaction {
+  readonly task: Task;
+  readonly status: TaskStatus;
+  move(nextStatus: TaskStatus, mutate?: (next: Task) => void): Promise<Task>;
+  save(mutate: (next: Task) => void): Promise<Task>;
+}
+
+async function taskLockIsStale(lockPath: string): Promise<boolean> {
+  try {
+    const owner = JSON.parse(await readFile(lockPath, "utf8")) as { acquiredAt?: number };
+    return (
+      typeof owner.acquiredAt === "number" && Date.now() - owner.acquiredAt > TASK_LOCK_STALE_MS
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function acquireTaskLock(task: Task, agent: string): Promise<TaskLock> {
+  const token = randomUUID();
+  const startedAt = Date.now();
+  let dirPath = task.filePath;
+
+  while (true) {
+    const lockPath = join(dirPath, TASK_LOCK_FILE);
+    try {
+      const handle = await open(lockPath, "wx");
+      try {
+        await handle.writeFile(
+          JSON.stringify({ token, agent, pid: process.pid, acquiredAt: Date.now() }),
+          "utf8",
+        );
+      } finally {
+        await handle.close();
+      }
+      return { token, agent, path: lockPath };
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === "ENOENT") {
+        const location = await findTaskLocation(task.projectRoot, task.id);
+        dirPath = location.task.filePath;
+        continue;
+      }
+      if (code !== "EEXIST") throw error;
+    }
+
+    if (await taskLockIsStale(lockPath)) {
+      try {
+        await unlink(lockPath);
+      } catch {
+        // Another waiter already removed it.
+      }
+      continue;
+    }
+
+    if (Date.now() - startedAt > TASK_LOCK_TIMEOUT_MS) {
+      throw new AxaError(
+        "LOCK_TIMEOUT",
+        `Timed out waiting for ${lockPath}. Another agent is editing this task.`,
+      );
+    }
+    await sleep(20 + Math.floor(Math.random() * 30));
+  }
+}
+
+async function releaseTaskLock(lock: TaskLock): Promise<void> {
+  try {
+    const owner = JSON.parse(await readFile(lock.path, "utf8")) as { token?: string };
+    if (owner.token === lock.token) {
+      await unlink(lock.path);
+    }
+  } catch {
+    // The task folder may already be gone.
+  }
+}
+
+async function withTaskLock<T>(
+  projectRoot: string,
+  rawTaskId: string,
+  actor: string | undefined,
+  run: (tx: TaskTransaction) => Promise<T>,
+): Promise<T> {
+  const root = resolve(projectRoot);
+  await assertAxaProject(root);
+
+  let location = await findTaskLocation(root, rawTaskId);
+  if (location.task.legacy) {
+    await withLock(legacyMigrationLockPath(root), async () => {
+      const fresh = await findTaskLocation(root, rawTaskId);
+      if (fresh.task.legacy) {
+        await migrateLegacyTask(fresh.task);
+      }
+    });
+    location = await findTaskLocation(root, rawTaskId);
+  }
+
+  const lock = await acquireTaskLock(location.task, actor?.trim() || "console");
+  try {
+    const current = await findTaskLocation(root, rawTaskId);
+    let task = current.task;
+    let status = current.status;
+
+    const move = async (nextStatus: TaskStatus, mutate?: (next: Task) => void): Promise<Task> => {
+      const nextTask: Task = { ...task, status: nextStatus, updatedAt: new Date().toISOString() };
+      mutate?.(nextTask);
+
+      const destination = join(statusDir(root, nextStatus), nextTask.filename);
+      if (destination !== task.filePath && (await pathExists(destination))) {
+        throw new AxaError("CONFLICT", `A task directory already exists at ${destination}.`);
+      }
+
+      await writeFileAtomic(join(task.filePath, TASK_METADATA_FILE), serializeMetadata(nextTask));
+      if (destination !== task.filePath) {
+        await ensureTaskDirs(root);
+        await rename(task.filePath, destination);
+        lock.path = join(destination, TASK_LOCK_FILE);
+      }
+
+      task = await readTaskFolder(destination, root, nextStatus);
+      status = nextStatus;
+      return task;
+    };
+
+    const tx: TaskTransaction = {
+      get task() {
+        return task;
+      },
+      get status() {
+        return status;
+      },
+      move,
+      save: (mutate) => move(status, mutate),
+    };
+    return await run(tx);
+  } finally {
+    await releaseTaskLock(lock);
+  }
+}
+
 async function migrateLegacyTask(task: Task): Promise<Task> {
   if (!task.legacy) return task;
   const folderName = task.filename.replace(/\.md$/u, "");
@@ -471,29 +725,6 @@ async function migrateLegacyTask(task: Task): Promise<Task> {
   return migrated;
 }
 
-async function persistAndMove(
-  task: Task,
-  nextStatus: TaskStatus,
-  projectRoot: string,
-  mutate?: (next: Task) => void,
-): Promise<Task> {
-  const current = await migrateLegacyTask(task);
-  const nextTask: Task = { ...current, status: nextStatus, updatedAt: new Date().toISOString() };
-  mutate?.(nextTask);
-
-  const destination = join(statusDir(projectRoot, nextStatus), nextTask.filename);
-  if (destination !== current.filePath && (await pathExists(destination))) {
-    throw new AxaError("CONFLICT", `A task directory already exists at ${destination}.`);
-  }
-
-  await writeFileAtomic(nextTask.metadataPath, serializeMetadata(nextTask));
-  if (destination !== current.filePath) {
-    await ensureTaskDirs(projectRoot);
-    await rename(current.filePath, destination);
-  }
-  return readTaskFolder(destination, projectRoot, nextStatus);
-}
-
 async function nextTaskId(projectRoot: string): Promise<string> {
   let highest = 0;
   for (const status of TASK_STATUSES) {
@@ -515,9 +746,14 @@ export async function initProject(options: InitProjectOptions): Promise<ProjectI
   const { mkdir } = await import("node:fs/promises");
   await mkdir(join(projectRoot, ".axa"), { recursive: true });
   await ensureTaskDirs(projectRoot);
-  const instruction = instructionPath(projectRoot);
-  if (!(await pathExists(instruction))) {
-    await writeFileAtomic(instruction, defaultInstruction(options.name ?? basename(projectRoot)));
+  const name = options.name ?? basename(projectRoot);
+  const skill = skillPath(projectRoot);
+  if (!(await pathExists(skill))) {
+    await writeFileAtomic(skill, defaultInstruction(name));
+  }
+  const readme = tasksReadmePath(projectRoot);
+  if (!(await pathExists(readme))) {
+    await writeFileAtomic(readme, defaultTasksReadme());
   }
   return readProjectInfo(projectRoot);
 }
@@ -542,7 +778,7 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
     throw new AxaError("INVALID_TASK", "New tasks can only be created in backlog or todo.");
   }
 
-  return withLock(projectLockPath(projectRoot), async () => {
+  return withLock(createLockPath(projectRoot), async () => {
     await ensureTaskDirs(projectRoot);
     const now = new Date().toISOString();
     let id = await nextTaskId(projectRoot);
@@ -639,36 +875,18 @@ export async function updateTask(input: UpdateTaskInput): Promise<Task> {
     throw new AxaError("INVALID_TASK", `Invalid priority: ${input.priority}`);
   }
 
-  return withLock(projectLockPath(projectRoot), async () => {
-    const location = await findTaskLocation(projectRoot, input.taskId);
-    const task = await migrateLegacyTask(location.task);
-    const { status } = location;
-    const next: Task = {
-      ...task,
-      title,
-      body: input.body.trim(),
-      priority: input.priority ?? task.priority,
-      reviewRequired: input.reviewRequired ?? task.reviewRequired,
-      tags: input.tags ? input.tags.map((tag) => tag.trim()).filter(Boolean) : task.tags,
-      extra: input.extra ? sanitizeExtra(input.extra) : task.extra,
-      updatedAt: new Date().toISOString(),
-    };
-
-    const filename = buildTaskFolderName(next.id, next.priority, title);
-    next.filename = filename;
-
-    const destination = join(statusDir(projectRoot, status), filename);
-    if (destination !== task.filePath && (await pathExists(destination))) {
-      throw new AxaError("CONFLICT", `A task directory already exists at ${destination}.`);
-    }
-
-    await updateLatestUserMessage(next, next.body);
-    if (destination !== task.filePath) {
-      await rename(task.filePath, destination);
-    }
-    next.metadataPath = join(destination, TASK_METADATA_FILE);
-    await writeFileAtomic(next.metadataPath, serializeMetadata(next));
-    return readTaskFolder(destination, projectRoot, status);
+  return withTaskLock(projectRoot, input.taskId, undefined, async (tx) => {
+    const { conversation } = await updateLatestUserMessage(tx.task, input.body.trim());
+    return tx.move(tx.status, (next) => {
+      next.title = title;
+      next.body = input.body.trim();
+      next.priority = input.priority ?? next.priority;
+      next.reviewRequired = input.reviewRequired ?? next.reviewRequired;
+      next.tags = input.tags ? input.tags.map((tag) => tag.trim()).filter(Boolean) : next.tags;
+      next.extra = input.extra ? sanitizeExtra(input.extra) : next.extra;
+      next.filename = buildTaskFolderName(next.id, next.priority, title);
+      next.conversation = conversation;
+    });
   });
 }
 
@@ -688,60 +906,81 @@ export async function appendTaskMessage(input: AppendTaskMessageInput): Promise<
     throw new AxaError("INVALID_TASK", "Message cannot be empty.");
   }
 
-  return withLock(projectLockPath(projectRoot), async () => {
-    const location = await findTaskLocation(projectRoot, input.taskId);
-    const task = await migrateLegacyTask(location.task);
-    const seq = nextConversationSeq(task.conversation);
-    const title = input.title?.trim() || defaultConversationTitle(message, task.title);
+  return withTaskLock(projectRoot, input.taskId, input.actor, async (tx) => {
+    const requestedActor = input.actor?.trim() || undefined;
+    let agent: string | undefined;
+    if (input.role === "agent") {
+      if (tx.status !== "doing") {
+        throw new AxaError(
+          "INVALID_STATE",
+          `Task ${tx.task.id} is ${tx.status}; summaries can only be written while doing.`,
+        );
+      }
+      agent = requestedActor ?? tx.task.claimedBy;
+      if (!agent) {
+        throw new AxaError(
+          "INVALID_STATE",
+          `Task ${tx.task.id} has no claimed agent; claim it before writing a summary.`,
+        );
+      }
+      if (requestedActor && tx.task.claimedBy && tx.task.claimedBy !== requestedActor) {
+        throw new AxaError(
+          "FORBIDDEN",
+          `Task ${tx.task.id} is claimed by ${tx.task.claimedBy}; ${requestedActor} cannot summarize it.`,
+        );
+      }
+    }
+
+    const seq = nextConversationSeq(tx.task.conversation);
+    const title = input.title?.trim() || defaultConversationTitle(message, tx.task.title);
     const filename = buildMessageFilename(seq, input.role, title);
-    const filePath = join(task.filePath, filename);
-    await writeFileAtomic(filePath, `${message}\n`);
+    const filePath = join(tx.task.filePath, filename);
+    await writeFileAtomic(
+      filePath,
+      agent ? serializeTaskDocument({ agent }, message) : `${message}\n`,
+    );
 
-    const next: Task = {
-      ...task,
-      updatedAt: new Date().toISOString(),
-      extra: {
-        ...task.extra,
-        ...(input.actor ? { updated_by: input.actor } : {}),
-      },
+    const entry: ConversationEntry = {
+      seq,
+      role: input.role,
+      title: humanizeDescription(slugifyTitle(title)),
+      filename,
+      filePath,
+      body: message,
+      ...(agent ? { agent } : {}),
     };
+    const conversation: ConversationEntry[] = [...tx.task.conversation, entry];
 
-    const conversation: ConversationEntry[] = [
-      ...task.conversation,
-      {
-        seq,
-        role: input.role,
-        title: humanizeDescription(slugifyTitle(title)),
-        filename,
-        filePath,
-        body: message,
-      },
-    ];
-
-    let nextStatus = task.status;
-    if (input.role === "user" && (task.status === "review" || task.status === "done")) {
+    let nextStatus = tx.status;
+    if (input.role === "user" && ["review", "done", "archived"].includes(tx.status)) {
       nextStatus = "todo";
-      delete next.claimedBy;
-      delete next.claimedAt;
-      const extra = { ...next.extra };
-      for (const key of ["completed_at", "completed_by", "accepted_at", "accepted_by"]) {
-        delete extra[key];
-      }
-      next.extra = extra;
     }
 
-    const reopened: Task = { ...next, conversation, status: nextStatus };
-    await writeFileAtomic(reopened.metadataPath, serializeMetadata(reopened));
-
-    const destination = join(statusDir(projectRoot, nextStatus), reopened.filename);
-    if (destination !== reopened.filePath) {
-      if (await pathExists(destination)) {
-        throw new AxaError("CONFLICT", `A task directory already exists at ${destination}.`);
+    return tx.move(nextStatus, (next) => {
+      next.body = input.role === "user" ? message : next.body;
+      next.conversation = conversation;
+      const updatedBy = requestedActor ?? agent;
+      next.extra = {
+        ...next.extra,
+        ...(updatedBy ? { updated_by: updatedBy } : {}),
+      };
+      if (nextStatus === "todo" && tx.status !== "todo") {
+        delete next.claimedBy;
+        delete next.claimedAt;
+        const extra = { ...next.extra };
+        for (const key of [
+          "completed_at",
+          "completed_by",
+          "accepted_at",
+          "accepted_by",
+          "archived_at",
+          "archived_by",
+        ]) {
+          delete extra[key];
+        }
+        next.extra = extra;
       }
-      await ensureTaskDirs(projectRoot);
-      await rename(reopened.filePath, destination);
-    }
-    return readTaskFolder(destination, projectRoot, nextStatus);
+    });
   });
 }
 
@@ -781,8 +1020,8 @@ export async function summarizeTask(
 
 export async function deleteTask(projectRoot: string, taskId: string): Promise<Task> {
   await assertAxaProject(projectRoot);
-  return withLock(projectLockPath(projectRoot), async () => {
-    const { task } = await findTaskLocation(projectRoot, taskId);
+  return withTaskLock(projectRoot, taskId, undefined, async (tx) => {
+    const task = tx.task;
     await rm(task.filePath, { recursive: true, force: true });
     return task;
   });
@@ -794,12 +1033,11 @@ export async function approveTask(
   actor?: string,
 ): Promise<Task> {
   await assertAxaProject(projectRoot);
-  return withLock(projectLockPath(projectRoot), async () => {
-    const { task, status } = await findTaskLocation(projectRoot, taskId);
-    if (status !== "backlog") {
-      throw new AxaError("INVALID_STATE", `Task ${task.id} is ${status}, not backlog.`);
+  return withTaskLock(projectRoot, taskId, actor, async (tx) => {
+    if (tx.status !== "backlog") {
+      throw new AxaError("INVALID_STATE", `Task ${tx.task.id} is ${tx.status}, not backlog.`);
     }
-    return persistAndMove(task, "todo", projectRoot, (next) => {
+    return tx.move("todo", (next) => {
       if (actor) {
         next.extra = { ...next.extra, approved_by: actor, approved_at: new Date().toISOString() };
       }
@@ -807,60 +1045,90 @@ export async function approveTask(
   });
 }
 
-export async function claimTask(input: ClaimTaskInput): Promise<Task> {
-  const projectRoot = resolve(input.projectRoot);
-  await assertAxaProject(projectRoot);
-  const agent = input.agent.trim();
-  if (!agent) {
-    throw new AxaError("INVALID_TASK", "An agent name is required to claim a task.");
-  }
-
-  return withLock(projectLockPath(projectRoot), async () => {
-    let taskId = input.taskId;
-    if (!taskId && input.next) {
-      const { tasks } = await scanTasks(projectRoot, { statuses: ["todo"] });
-      const first = tasks[0];
-      if (!first) {
-        throw new AxaError("NOT_FOUND", "There are no todo tasks available to claim.");
-      }
-      taskId = first.id;
-    }
-    if (!taskId) {
-      throw new AxaError("INVALID_TASK", "Provide a task id or use claim --next.");
-    }
-
-    const { task, status } = await findTaskLocation(projectRoot, taskId);
-    if (status === "doing") {
+async function claimTaskById(
+  projectRoot: string,
+  taskId: string,
+  agentPlatform: string,
+): Promise<Task> {
+  return withTaskLock(projectRoot, taskId, agentPlatform, async (tx) => {
+    if (tx.status === "doing") {
       throw new AxaError(
         "ALREADY_CLAIMED",
-        `Task ${task.id} is already claimed by ${task.claimedBy ?? "another agent"}.`,
+        `Task ${tx.task.id} is already claimed by ${tx.task.claimedBy ?? "another agent"}.`,
       );
     }
-    if (status !== "todo") {
+    if (tx.status !== "todo") {
       throw new AxaError(
         "INVALID_STATE",
-        `Task ${task.id} is ${status}; only todo tasks can be claimed.`,
+        `Task ${tx.task.id} is ${tx.status}; only todo tasks can be claimed.`,
       );
     }
-
-    return persistAndMove(task, "doing", projectRoot, (next) => {
-      next.claimedBy = agent;
+    return tx.move("doing", (next) => {
+      next.claimedBy = buildAgentId(agentPlatform);
       next.claimedAt = new Date().toISOString();
     });
   });
 }
 
-export async function releaseTask(projectRoot: string, taskId: string): Promise<Task> {
+export async function claimTask(input: ClaimTaskInput): Promise<Task> {
+  const projectRoot = resolve(input.projectRoot);
   await assertAxaProject(projectRoot);
-  return withLock(projectLockPath(projectRoot), async () => {
-    const { task, status } = await findTaskLocation(projectRoot, taskId);
-    if (status !== "doing") {
+  const agentPlatform = input.agentPlatform.trim();
+  if (!agentPlatform) {
+    throw new AxaError("INVALID_TASK", "An agent platform name is required to claim a task.");
+  }
+
+  if (!input.next) {
+    if (!input.taskId) {
+      throw new AxaError("INVALID_TASK", "Provide a task id or use claim --next.");
+    }
+    return claimTaskById(projectRoot, input.taskId, agentPlatform);
+  }
+
+  const { tasks } = await scanTasks(projectRoot, { statuses: ["todo"] });
+  let lastError: AxaError | undefined;
+  for (const candidate of tasks) {
+    try {
+      return await claimTaskById(projectRoot, candidate.id, agentPlatform);
+    } catch (error) {
+      if (
+        error instanceof AxaError &&
+        (error.code === "ALREADY_CLAIMED" || error.code === "INVALID_STATE")
+      ) {
+        lastError = error;
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError ?? new AxaError("NOT_FOUND", "There are no todo tasks available to claim.");
+}
+
+export async function releaseTask(
+  projectRoot: string,
+  taskId: string,
+  options: ReleaseTaskOptions = {},
+): Promise<Task> {
+  await assertAxaProject(projectRoot);
+  return withTaskLock(projectRoot, taskId, options.actor, async (tx) => {
+    if (tx.status !== "doing") {
       throw new AxaError(
         "INVALID_STATE",
-        `Task ${task.id} is ${status}; only doing tasks can be released.`,
+        `Task ${tx.task.id} is ${tx.status}; only doing tasks can be released.`,
       );
     }
-    return persistAndMove(task, "todo", projectRoot, (next) => {
+    if (
+      !options.force &&
+      options.actor &&
+      tx.task.claimedBy &&
+      tx.task.claimedBy !== options.actor
+    ) {
+      throw new AxaError(
+        "FORBIDDEN",
+        `Task ${tx.task.id} is claimed by ${tx.task.claimedBy}; ${options.actor} cannot release it.`,
+      );
+    }
+    return tx.move("todo", (next) => {
       delete next.claimedBy;
       delete next.claimedAt;
     });
@@ -875,29 +1143,38 @@ export async function completeTask(
   projectRoot: string,
   taskId: string,
   actor?: string,
+  options: { force?: boolean } = {},
 ): Promise<Task> {
   await assertAxaProject(projectRoot);
-  return withLock(projectLockPath(projectRoot), async () => {
-    const { task, status } = await findTaskLocation(projectRoot, taskId);
-    if (status !== "doing") {
+  return withTaskLock(projectRoot, taskId, actor, async (tx) => {
+    if (tx.status !== "doing") {
       throw new AxaError(
         "INVALID_STATE",
-        `Task ${task.id} is ${status}; only doing tasks can be completed.`,
+        `Task ${tx.task.id} is ${tx.status}; only doing tasks can be completed.`,
       );
     }
-    if (task.reviewRequired && !hasAgentSummary(task)) {
+    if (!hasAgentSummary(tx.task)) {
       throw new AxaError(
         "INVALID_TASK",
-        `Task ${task.id} needs an agent summary before review. Run "axa summary ${task.id} -m ..." first.`,
+        `Task ${tx.task.id} has no agent summary for this round. Run "axa summary ${tx.task.id} --file <path>" first.`,
       );
     }
-    const nextStatus: TaskStatus = task.reviewRequired ? "review" : "done";
-    return persistAndMove(task, nextStatus, projectRoot, (next) => {
+    if (!options.force && actor && tx.task.claimedBy && tx.task.claimedBy !== actor) {
+      throw new AxaError(
+        "FORBIDDEN",
+        `Task ${tx.task.id} is claimed by ${tx.task.claimedBy}; ${actor} cannot complete it.`,
+      );
+    }
+    const completedBy = actor ?? tx.task.claimedBy ?? "unknown";
+    const nextStatus: TaskStatus = tx.task.reviewRequired ? "review" : "done";
+    return tx.move(nextStatus, (next) => {
       next.extra = {
         ...next.extra,
         completed_at: new Date().toISOString(),
-        completed_by: actor ?? next.claimedBy ?? "unknown",
+        completed_by: completedBy,
       };
+      delete next.claimedBy;
+      delete next.claimedAt;
     });
   });
 }
@@ -908,15 +1185,14 @@ export async function acceptTask(
   actor?: string,
 ): Promise<Task> {
   await assertAxaProject(projectRoot);
-  return withLock(projectLockPath(projectRoot), async () => {
-    const { task, status } = await findTaskLocation(projectRoot, taskId);
-    if (status !== "review") {
+  return withTaskLock(projectRoot, taskId, actor, async (tx) => {
+    if (tx.status !== "review") {
       throw new AxaError(
         "INVALID_STATE",
-        `Task ${task.id} is ${status}; only review tasks can be accepted.`,
+        `Task ${tx.task.id} is ${tx.status}; only review tasks can be accepted.`,
       );
     }
-    return persistAndMove(task, "done", projectRoot, (next) => {
+    return tx.move("done", (next) => {
       next.extra = {
         ...next.extra,
         accepted_at: new Date().toISOString(),
@@ -926,36 +1202,82 @@ export async function acceptTask(
   });
 }
 
-export async function reclaimStaleTasks(
+export async function releaseStaleTasks(
   projectRoot: string,
-  olderThanMs: number,
-): Promise<ReclaimStaleResult> {
+  olderThanMs: number = STALE_CLAIM_MS,
+): Promise<ReleaseStaleResult> {
   await assertAxaProject(projectRoot);
   if (!Number.isFinite(olderThanMs) || olderThanMs <= 0) {
     throw new AxaError("INVALID_TASK", "olderThanMs must be a positive number.");
   }
 
-  return withLock(projectLockPath(projectRoot), async () => {
-    const { tasks } = await scanTasks(projectRoot, { statuses: ["doing"] });
-    const now = Date.now();
-    const reclaimed: Task[] = [];
-    let skipped = 0;
+  const { tasks } = await scanTasks(projectRoot, { statuses: ["doing"] });
+  const now = Date.now();
+  const released: Task[] = [];
+  let skipped = 0;
 
-    for (const task of tasks) {
-      const claimedAt = task.claimedAt ? new Date(task.claimedAt).getTime() : Number.NaN;
-      if (!Number.isFinite(claimedAt) || now - claimedAt < olderThanMs) {
-        skipped += 1;
-        continue;
-      }
-      const released = await persistAndMove(task, "todo", projectRoot, (next) => {
-        delete next.claimedBy;
-        delete next.claimedAt;
-      });
-      reclaimed.push(released);
+  for (const task of tasks) {
+    const claimedAt = task.claimedAt ? new Date(task.claimedAt).getTime() : Number.NaN;
+    if (!Number.isFinite(claimedAt) || now - claimedAt < olderThanMs) {
+      skipped += 1;
+      continue;
     }
+    try {
+      released.push(await releaseTask(projectRoot, task.id, { force: true }));
+    } catch {
+      skipped += 1;
+    }
+  }
 
-    return { reclaimed, skipped };
-  });
+  return { released, skipped };
+}
+
+function extraTimestamp(value: unknown): number | undefined {
+  if (typeof value !== "string") return undefined;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : undefined;
+}
+
+export async function maintainProject(
+  projectRoot: string,
+  options: { now?: Date; releaseAfterMs?: number; archiveAfterMs?: number } = {},
+): Promise<MaintenanceResult> {
+  await assertAxaProject(projectRoot);
+  const now = options.now?.getTime() ?? Date.now();
+  const releaseAfterMs = options.releaseAfterMs ?? STALE_CLAIM_MS;
+  const archiveAfterMs = options.archiveAfterMs ?? ARCHIVE_AFTER_MS;
+
+  const releaseResult = await releaseStaleTasks(projectRoot, releaseAfterMs);
+
+  const { tasks } = await scanTasks(projectRoot, { statuses: ["done"] });
+  const archived: Task[] = [];
+  for (const task of tasks) {
+    const finishedAt =
+      extraTimestamp(task.extra.accepted_at) ??
+      extraTimestamp(task.extra.completed_at) ??
+      new Date(task.updatedAt).getTime();
+    if (!Number.isFinite(finishedAt) || now - finishedAt < archiveAfterMs) continue;
+    try {
+      archived.push(
+        await withTaskLock(projectRoot, task.id, "axa", async (tx) => {
+          if (tx.status !== "done") {
+            throw new AxaError("INVALID_STATE", `Task ${tx.task.id} is ${tx.status}, not done.`);
+          }
+          return tx.move("archived", (next) => {
+            next.extra = {
+              ...next.extra,
+              archived_at: new Date(now).toISOString(),
+              archived_by: "auto",
+            };
+          });
+        }),
+      );
+    } catch {
+      // The task moved while maintenance was running.
+    }
+  }
+
+  return { released: releaseResult.released, archived };
 }
 
 export async function resolveProject(projectRoot?: string): Promise<string> {
@@ -972,14 +1294,12 @@ export async function writeTaskBody(
   body: string,
 ): Promise<Task> {
   await assertAxaProject(projectRoot);
-  return withLock(projectLockPath(projectRoot), async () => {
-    const { task, status } = await findTaskLocation(projectRoot, taskId);
-    const migrated = await migrateLegacyTask(task);
-    const next: Task = { ...migrated, body, updatedAt: new Date().toISOString() };
-    const { conversation } = await updateLatestUserMessage(next, body);
-    next.conversation = conversation;
-    await writeFileAtomic(next.metadataPath, serializeMetadata(next));
-    return readTaskFolder(next.filePath, projectRoot, status);
+  return withTaskLock(projectRoot, taskId, undefined, async (tx) => {
+    const { conversation } = await updateLatestUserMessage(tx.task, body);
+    return tx.save((next) => {
+      next.body = body;
+      next.conversation = conversation;
+    });
   });
 }
 

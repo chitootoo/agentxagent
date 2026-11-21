@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "id": "005",
+  "title": "构建Nextjs控制台",
+  "priority": "P1",
+  "status": "done",
+  "reviewRequired": true,
+  "createdAt": "2026-11-04T14:05:03.845Z",
+  "updatedAt": "2026-11-04T14:05:08.800Z",
+  "claimedBy": "Haoda",
+  "claimedAt": "2026-11-04T14:05:08.552Z",
+  "tags": [],
+  "extra": {
+    "created_by": "Haoda",
+    "completed_at": "2026-11-04T14:05:08.800Z",
+    "completed_by": "Haoda"
+  }
+}

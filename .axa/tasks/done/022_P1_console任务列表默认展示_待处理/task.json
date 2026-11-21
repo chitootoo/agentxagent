@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "id": "022",
+  "title": "console任务列表默认展示\"待处理\"",
+  "priority": "P1",
+  "status": "done",
+  "reviewRequired": true,
+  "createdAt": "2026-11-20T15:52:01.418Z",
+  "updatedAt": "2026-11-20T16:10:28.394Z",
+  "tags": [],
+  "extra": {
+    "created_by": "human",
+    "updated_by": "trae_26-11-21_00:08:27.475",
+    "completed_at": "2026-11-20T16:08:59.686Z",
+    "completed_by": "trae_26-11-21_00:08:27.475",
+    "accepted_at": "2026-11-20T16:10:28.394Z",
+    "accepted_by": "human"
+  }
+}

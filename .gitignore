@@ -11,7 +11,8 @@ coverage/
 *.log
 
 # Local axa runtime state
-.axa/.lock/
-.axa/**/.lock/
+.axa/**/.lock
+.axa/tasks/.create.lock/
+.axa/tasks/.migrate.lock/
 .axa/*.db
 .axa/*.db-*

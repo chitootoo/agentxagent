@@ -1,4 +1,4 @@
-import { BoardView } from "@/components/board-view";
+import { InboxView } from "@/components/inbox-view";
 
 interface ProjectPageProps {
   params: Promise<{ id: string }>;
@@ -6,5 +6,5 @@ interface ProjectPageProps {
 
 export default async function ProjectPage({ params }: ProjectPageProps) {
   const { id } = await params;
-  return <BoardView projectId={id} />;
+  return <InboxView initialProjectId={id} />;
 }

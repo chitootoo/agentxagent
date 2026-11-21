@@ -5,7 +5,43 @@ import { useCallback, useEffect, useState } from "react";
 import { taskClient } from "@/lib/client";
 import { errorMessage, formatDateTime, formatRelativeTime } from "@/lib/format";
 import { actionLabel } from "@/lib/task-meta";
-import { CheckIcon, SparkIcon, TrashIcon } from "./icons";
+import { usePullToRefresh } from "@/lib/use-pull-to-refresh";
+import {
+  ActivityIcon,
+  ArchiveIcon,
+  ChatIcon,
+  CheckIcon,
+  FileTextIcon,
+  PencilIcon,
+  PlayIcon,
+  PlusIcon,
+  TrashIcon,
+  UndoIcon,
+} from "./icons";
+
+function actionIcon(action: string) {
+  switch (action) {
+    case "create":
+      return <PlusIcon size={14} />;
+    case "update":
+      return <PencilIcon size={14} />;
+    case "delete":
+      return <TrashIcon size={14} />;
+    case "claim":
+      return <PlayIcon size={14} />;
+    case "comment":
+      return <ChatIcon size={14} />;
+    case "summary":
+      return <FileTextIcon size={14} />;
+    case "release":
+    case "release_stale":
+      return <UndoIcon size={14} />;
+    case "archive":
+      return <ArchiveIcon size={14} />;
+    default:
+      return <CheckIcon size={14} />;
+  }
+}
 
 export function ActivityView() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -23,8 +59,8 @@ export function ActivityView() {
     }
   }, []);
 
-  const loadActivities = useCallback(async (projectId: string) => {
-    setLoading(true);
+  const loadActivities = useCallback(async (projectId: string, quiet = false) => {
+    if (!quiet) setLoading(true);
     try {
       const response = await taskClient.listActivity({ projectId, limit: 100 });
       setActivities(response.activities);
@@ -32,9 +68,13 @@ export function ActivityView() {
     } catch (cause) {
       setError(errorMessage(cause));
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }, []);
+
+  const { distance, refreshing, pullHandlers } = usePullToRefresh(() =>
+    loadActivities(filter, true),
+  );
 
   useEffect(() => {
     void loadProjects();
@@ -47,12 +87,17 @@ export function ActivityView() {
   const projectName = (id: string) => projects.find((project) => project.id === id)?.name ?? id;
 
   return (
-    <div className="page-stack">
+    <div className="page-stack activity-wrap" {...pullHandlers}>
+      <div
+        aria-hidden={distance === 0 && !refreshing}
+        className={`pull-indicator${refreshing ? " refreshing" : ""}`}
+        style={{ height: refreshing ? 44 : distance }}
+      >
+        {refreshing ? "正在刷新…" : distance >= 56 ? "松开刷新" : "下拉刷新"}
+      </div>
+
       <header className="page-heading split">
         <div>
-          <span className="eyebrow">
-            <SparkIcon size={14} /> Audit trail
-          </span>
           <h1>本地操作动态</h1>
           <p>所有状态流转都发生在你的机器上，并记录到本地 SQLite。</p>
         </div>
@@ -86,7 +131,7 @@ export function ActivityView() {
         ) : activities.length === 0 ? (
           <div className="empty-state">
             <span className="empty-icon">
-              <SparkIcon size={22} />
+              <ActivityIcon size={22} />
             </span>
             <h2>暂无动作记录</h2>
             <p>通过控制台或 CLI 创建、批准、认领、完成任务后，这里会出现时间线。</p>
@@ -96,13 +141,7 @@ export function ActivityView() {
             {activities.map((activity) => (
               <li key={activity.id}>
                 <span className={`timeline-icon action-${activity.action}`}>
-                  {activity.action === "complete" ? (
-                    <CheckIcon size={14} />
-                  ) : activity.action === "delete" ? (
-                    <TrashIcon size={14} />
-                  ) : (
-                    <SparkIcon size={14} />
-                  )}
+                  {actionIcon(activity.action)}
                 </span>
                 <div className="timeline-body">
                   <div className="timeline-title">

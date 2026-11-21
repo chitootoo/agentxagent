@@ -9,13 +9,22 @@ export const PRIORITY_META: Record<TaskPriority, { label: string; hint: string }
 
 export const PRIORITY_OPTIONS = [TaskPriority.P0, TaskPriority.P1, TaskPriority.P2] as const;
 
-export const STATUS_META: Record<TaskStatus, { label: string; hint: string; className: string }> = {
-  [TaskStatus.UNSPECIFIED]: { label: "未知", hint: "", className: "backlog" },
-  [TaskStatus.BACKLOG]: { label: "Backlog", hint: "待审核", className: "backlog" },
-  [TaskStatus.TODO]: { label: "Todo", hint: "可认领", className: "todo" },
-  [TaskStatus.DOING]: { label: "Doing", hint: "进行中", className: "doing" },
-  [TaskStatus.REVIEW]: { label: "Review", hint: "待验收", className: "review" },
-  [TaskStatus.DONE]: { label: "Done", hint: "已完成", className: "done" },
+export const STATUS_META: Record<
+  TaskStatus,
+  { label: string; hint: string; className: string; glyph: string }
+> = {
+  [TaskStatus.UNSPECIFIED]: { label: "未知", hint: "", className: "backlog", glyph: "?" },
+  [TaskStatus.BACKLOG]: { label: "待审核", hint: "待审核", className: "backlog", glyph: "批" },
+  [TaskStatus.TODO]: { label: "待认领", hint: "待认领", className: "todo", glyph: "待" },
+  [TaskStatus.DOING]: { label: "进行中", hint: "进行中", className: "doing", glyph: "做" },
+  [TaskStatus.REVIEW]: { label: "待验收", hint: "待验收", className: "review", glyph: "验" },
+  [TaskStatus.DONE]: { label: "已完成", hint: "已完成", className: "done", glyph: "完" },
+  [TaskStatus.ARCHIVED]: {
+    label: "已归档",
+    hint: "已归档",
+    className: "archived",
+    glyph: "档",
+  },
 };
 
 export const ACTION_LABELS: Record<string, string> = {
@@ -29,7 +38,8 @@ export const ACTION_LABELS: Record<string, string> = {
   accept: "验收通过",
   comment: "追加需求",
   summary: "提交汇总",
-  reclaim: "回收任务",
+  release_stale: "释放超时任务",
+  archive: "归档任务",
 };
 
 export function actionLabel(action: string): string {

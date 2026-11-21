@@ -2,10 +2,7 @@ import type { Task } from "@contagxt/axa-proto";
 
 export function taskExecutionPrompt(task: Pick<Task, "id" | "title">, projectPath: string): string {
   const root = projectPath.replace(/\/+$/u, "");
-  return [
-    `请阅读 ${root}/.axa/instruction.md，并按照其中的 axa 工作流执行任务 #${task.id}「${task.title}」。`,
-    `先运行 \`axa claim ${task.id} --project ${root} --agent <你的名字>\` 领取任务，并读取任务文件夹中的完整会话记录；完成后运行 \`axa summary ${task.id} --project ${root} --agent <你的名字> -m "本轮实现说明与验证证据"\`，再运行 \`axa done ${task.id} --project ${root} --agent <你的名字>\`。`,
-  ].join("\n");
+  return `在项目 ${root} 下阅读 .axa/SKILL.md，执行任务 #${task.id}「${task.title}」。`;
 }
 
 export async function copyText(text: string): Promise<void> {

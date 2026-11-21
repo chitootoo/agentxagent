@@ -7,6 +7,7 @@ const STATUS_COLORS: Record<TaskStatus, (value: string) => string> = {
   doing: pc.yellow,
   review: pc.magenta,
   done: pc.green,
+  archived: pc.dim,
 };
 
 const PRIORITY_COLORS: Record<TaskPriority, (value: string) => string> = {
@@ -103,7 +104,7 @@ export function printProjects(projects: ListProjectsResult[]): void {
   }
   for (const project of projects) {
     const missing = project.exists ? "" : pc.red(" [missing]");
-    const counts = `${project.counts.todo} todo · ${project.counts.doing} doing · ${project.counts.review} review · ${project.counts.done} done`;
+    const counts = `${project.counts.todo} todo · ${project.counts.doing} doing · ${project.counts.review} review · ${project.counts.done} done · ${project.counts.archived} archived`;
     console.log(`${pc.bold(project.id)}  ${project.name}${missing}`);
     console.log(`  ${pc.dim(project.path)}`);
     console.log(`  ${counts} · ${project.counts.backlog} backlog`);
@@ -111,7 +112,7 @@ export function printProjects(projects: ListProjectsResult[]): void {
 }
 
 export function printBoard(tasks: Task[]): void {
-  for (const status of ["backlog", "todo", "doing", "review", "done"] as const) {
+  for (const status of ["backlog", "todo", "doing", "review", "done", "archived"] as const) {
     const group = tasks.filter((task) => task.status === status);
     console.log(`\n${STATUS_COLORS[status](status.toUpperCase())} ${pc.dim(`(${group.length})`)}`);
     if (group.length === 0) {
