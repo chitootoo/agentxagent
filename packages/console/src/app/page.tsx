@@ -1,5 +1,5 @@
-import { InboxView } from "@/components/inbox-view";
+import { SecretaryChat } from "@/components/secretary-chat";
 
 export default function HomePage() {
-  return <InboxView />;
+  return <SecretaryChat />;
 }

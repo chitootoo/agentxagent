@@ -14,6 +14,7 @@ import {
 import { taskClient } from "@/lib/client";
 import { errorMessage, formatDateTime, formatRelativeTime, shortPath } from "@/lib/format";
 import { copyText, taskExecutionPrompt } from "@/lib/instruction";
+import { projectLink } from "@/lib/project-link";
 import { priorityLabel, statusMeta } from "@/lib/task-meta";
 import { useActor } from "@/lib/use-actor";
 import { useVisiblePolling } from "@/lib/use-visible-polling";
@@ -46,21 +47,21 @@ function statusNotice(task: Task): { tone: string; title: string; detail: string
       return {
         tone: "attention",
         title: "等待你的批准",
-        detail: "批准后任务进入待认领，Agent 才能认领执行。",
+        detail: "批准后任务进入待认领，worker 才能认领执行。",
       };
     case TaskStatus.TODO:
       return {
         tone: "waiting",
-        title: "等待 Agent 认领",
-        detail: "可以把执行指令发给 Agent，或等待它主动领取。",
+        title: "等待 worker 认领",
+        detail: "可以把执行指令发给 worker，或等待它主动领取。",
       };
     case TaskStatus.DOING:
       return {
         tone: "working",
-        title: task.claimedBy ? `@${task.claimedBy} 正在处理` : "Agent 正在处理",
+        title: task.claimedBy ? `@${task.claimedBy} 正在处理` : "worker 正在处理",
         detail: task.reviewRequired
-          ? "Agent 提交汇总后会进入待验收。"
-          : "这个任务无需人工验收，Agent 完成后会直接完成。",
+          ? "worker 提交汇总后会进入待验收。"
+          : "这个任务无需人工验收，worker 完成后会直接完成。",
       };
     case TaskStatus.REVIEW:
       return {
@@ -185,7 +186,7 @@ export function TaskConversation({ projectId, taskId }: TaskConversationProps) {
       });
       setDraft("");
       atBottomRef.current = true;
-      setNotice(reopens ? "已追加需求，任务重新打开为待认领" : "已追加需求，等待 Agent 继续处理");
+      setNotice(reopens ? "已追加需求，任务重新打开为待认领" : "已追加需求，等待 worker 继续处理");
       await load(true);
     } catch (cause) {
       setActionError(errorMessage(cause));
@@ -209,7 +210,7 @@ export function TaskConversation({ projectId, taskId }: TaskConversationProps) {
     setNotice(undefined);
     try {
       await copyText(taskExecutionPrompt(task, project.path));
-      setNotice(`已复制 #${task.id} 的执行指令，粘贴给 Agent 即可开始。`);
+      setNotice(`已复制 #${task.id} 的执行指令，粘贴给 worker 即可开始。`);
       setMenuOpen(false);
     } catch (cause) {
       setActionError(errorMessage(cause));
@@ -242,7 +243,7 @@ export function TaskConversation({ projectId, taskId }: TaskConversationProps) {
       "任务已删除",
     );
     if (removed) {
-      router.replace(`/projects/${projectId}`);
+      router.replace(projectLink(projectId));
     }
   }
 
@@ -273,7 +274,7 @@ export function TaskConversation({ projectId, taskId }: TaskConversationProps) {
         <div className="panel empty-state">
           <h1>无法打开任务</h1>
           <p>{error ?? "任务可能已被删除。"}</p>
-          <Link className="button secondary" href={`/projects/${projectId}`}>
+          <Link className="button secondary" href={projectLink(projectId)}>
             返回会话列表
           </Link>
         </div>
@@ -295,7 +296,7 @@ export function TaskConversation({ projectId, taskId }: TaskConversationProps) {
   const composerHint = reopensOnReply
     ? "追加需求会把任务重新打开为待认领"
     : task.status === TaskStatus.DOING
-      ? "追加需求会直接发给执行中的 Agent"
+      ? "追加需求会直接发给执行中的 worker"
       : undefined;
 
   return (
@@ -438,7 +439,7 @@ export function TaskConversation({ projectId, taskId }: TaskConversationProps) {
                 >
                   <article className="chat-bubble">
                     <div className="bubble-meta">
-                      <span>{fromUser ? actor : entry.agent || "Agent"}</span>
+                      <span>{fromUser ? actor : entry.agent || "worker"}</span>
                       {entry.title ? <span className="bubble-title">{entry.title}</span> : null}
                       <code>#{entry.seq}</code>
                     </div>
@@ -545,7 +546,7 @@ export function TaskConversation({ projectId, taskId }: TaskConversationProps) {
             disabled={sending}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={onComposerKeyDown}
-            placeholder={reopensOnReply ? "追加需求，重新打开任务…" : "追加需求，发给 Agent…"}
+            placeholder={reopensOnReply ? "追加需求，重新打开任务…" : "追加需求，发给 worker…"}
             rows={1}
             value={draft}
           />
@@ -586,7 +587,7 @@ export function TaskConversation({ projectId, taskId }: TaskConversationProps) {
             </span>
             <span className="menu-copy">
               <strong>复制执行指令</strong>
-              <small>把任务交给新的 Agent 会话</small>
+              <small>把任务交给新的 worker 会话</small>
             </span>
             <ArrowRightIcon size={16} />
           </button>

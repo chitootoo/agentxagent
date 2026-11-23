@@ -10,4 +10,10 @@ export const activity = sqliteTable("activity", {
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 
+/** Tracks the source JSONL byte size so this cache can be rebuilt on demand. */
+export const activityMeta = sqliteTable("activity_meta", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+});
+
 export type ActivityRow = typeof activity.$inferSelect;

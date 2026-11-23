@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "id": "029",
+  "title": "bugfix: 便携化后存量数据迁移与 Console 项目 ID 路由 404 修复",
+  "priority": "P1",
+  "status": "done",
+  "reviewRequired": false,
+  "createdAt": "2026-11-22T06:50:26.995Z",
+  "updatedAt": "2026-11-22T07:34:45.474Z",
+  "tags": [],
+  "extra": {
+    "created_by": "secretary",
+    "updated_by": "codebuddy_26-11-22_15:29:29.646",
+    "completed_at": "2026-11-22T07:34:45.474Z",
+    "completed_by": "codebuddy_26-11-22_15:29:29.646"
+  }
+}

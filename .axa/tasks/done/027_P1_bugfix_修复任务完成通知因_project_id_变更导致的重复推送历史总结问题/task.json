@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "id": "027",
+  "title": "bugfix: 修复任务完成通知因 project_id 变更导致的重复推送历史总结问题",
+  "priority": "P1",
+  "status": "done",
+  "reviewRequired": false,
+  "createdAt": "2026-11-22T06:42:08.268Z",
+  "updatedAt": "2026-11-22T06:53:19.227Z",
+  "tags": [],
+  "extra": {
+    "created_by": "secretary",
+    "updated_by": "codebuddy_26-11-22_14:49:36.397",
+    "completed_at": "2026-11-22T06:53:19.227Z",
+    "completed_by": "codebuddy_26-11-22_14:49:36.397"
+  }
+}

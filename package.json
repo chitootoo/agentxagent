@@ -2,7 +2,7 @@
   "name": "agent-x-agent",
   "version": "0.1.0",
   "private": true,
-  "description": "axa — a local-first task hub for humans and AI agents",
+  "description": "axa — a local-first Boss / secretary / worker collaboration hub",
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@12.16.1",
@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build": "pnpm build:packages && pnpm --filter @contagxt/axa-console build",
-    "build:packages": "pnpm --filter @contagxt/axa-proto build && pnpm --filter @contagxt/axa-core build && pnpm --filter @contagxt/axa-cli build",
+    "build:packages": "pnpm --filter @contagxt/axa-proto build && pnpm --filter @contagxt/axa-core build && pnpm --filter @contagxt/axa-secretary build && pnpm --filter @contagxt/axa-cli build",
     "dev": "pnpm build:packages && pnpm --filter @contagxt/axa-console dev",
     "dev:console": "pnpm --filter @contagxt/axa-console dev",
     "axa": "tsx packages/cli/src/index.ts",

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 const ACTOR_KEY = "axa.actor";
-const DEFAULT_ACTOR = "human";
+const DEFAULT_ACTOR = "Boss";
 
 export function useActor() {
   const [actor, setActorState] = useState(DEFAULT_ACTOR);

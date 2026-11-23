@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "axa · Agent × Agent",
+    name: "axa · Boss × Secretary × Worker",
     short_name: "axa",
-    description: "Local-first task control for humans and AI agents.",
+    description: "Boss 与秘书对话，秘书调度 worker 执行任务的本地协作中枢。",
     start_url: "/",
     display: "standalone",
     background_color: "#f3efe6",

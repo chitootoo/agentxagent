@@ -3,30 +3,36 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import { ActivityIcon, ChatIcon, ProjectsIcon } from "./icons";
+import { ActivityIcon, ChatIcon, FileTextIcon, ProjectsIcon } from "./icons";
 
 const NAV_ITEMS = [
-  { href: "/", label: "消息", icon: ChatIcon },
+  { href: "/", label: "秘书", icon: ChatIcon },
+  { href: "/tasks", label: "任务", icon: FileTextIcon },
   { href: "/projects", label: "项目", icon: ProjectsIcon },
   { href: "/activity", label: "动态", icon: ActivityIcon },
 ] as const;
 
 function isActive(href: string, pathname: string): boolean {
   if (href === "/") {
-    return pathname === "/" || (pathname.startsWith("/projects/") && pathname !== "/projects");
+    return pathname === "/";
+  }
+  if (href === "/tasks") {
+    return pathname === "/tasks";
   }
   if (href === "/projects") {
-    return pathname === "/projects";
+    return pathname === "/projects" || pathname.startsWith("/projects/");
   }
   return pathname.startsWith(href);
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const conversation = /^\/projects\/[^/]+\/tasks\/[^/]+/.test(pathname);
+  const conversation = /^\/projects\/.+\/tasks\/[^/]+/.test(pathname);
+  const bossChat = pathname === "/";
+  const chatPage = conversation || bossChat;
 
   return (
-    <div className={`app-shell${conversation ? " chat-focus" : ""}`}>
+    <div className={`app-shell${conversation ? " chat-focus" : ""}${bossChat ? " boss-chat" : ""}`}>
       <aside className="sidebar">
         <Link className="brand" href="/">
           <span className="brand-mark">
@@ -34,7 +40,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
           <span className="brand-copy">
             <strong>axa</strong>
-            <span>本地任务中枢</span>
+            <span>Boss · secretary · worker</span>
           </span>
         </Link>
 
@@ -70,7 +76,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="app-main">
-        <main className={`page${conversation ? " page--chat" : ""}`}>{children}</main>
+        <main className={`page${chatPage ? " page--chat" : ""}`}>{children}</main>
       </div>
 
       {conversation ? null : (

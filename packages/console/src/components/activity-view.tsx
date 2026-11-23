@@ -99,7 +99,7 @@ export function ActivityView() {
       <header className="page-heading split">
         <div>
           <h1>本地操作动态</h1>
-          <p>所有状态流转都发生在你的机器上，并记录到本地 SQLite。</p>
+          <p>所有状态流转都发生在你的机器上，并记录到本地活动日志。</p>
         </div>
         <label className="filter-field">
           <span>项目</span>

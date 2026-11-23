@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { taskClient } from "@/lib/client";
 import { errorMessage, shortPath } from "@/lib/format";
+import { projectLink } from "@/lib/project-link";
 import { ArrowRightIcon, PlusIcon, ProjectsIcon, TrashIcon } from "./icons";
 
 interface ProjectForm {
@@ -121,13 +122,13 @@ export function ProjectsView() {
       <header className="hero">
         <div>
           <h1>
-            把任务交给 Agent，
+            把任务交给 worker，
             <br />
             把控制权留在本地。
           </h1>
           <p className="hero-copy">
-            axa 用一套人类可读的 <code>.axa/</code> 目录协调多个 AI Agent。 文件是真相源，CLI
-            是行动接口，控制台负责观察与批准。
+            axa 用一套人类可读的 <code>.axa/</code> 目录协调 Boss、秘书与多个 worker。
+            文件是真相源，CLI 是行动接口，控制台负责观察与批准。
           </p>
         </div>
         <div className="hero-actions">
@@ -139,7 +140,7 @@ export function ProjectsView() {
             <PlusIcon size={16} />
             添加项目
           </button>
-          <span className="hero-meta">零云依赖 · 本地 SQLite · 文件优先</span>
+          <span className="hero-meta">零云依赖 · 本地文件 · 完全透明</span>
         </div>
       </header>
 
@@ -321,7 +322,7 @@ export function ProjectsView() {
                     </span>
                   </div>
                   {project.exists ? (
-                    <Link className="card-link" href={`/projects/${project.id}`}>
+                    <Link className="card-link" href={projectLink(project.id)}>
                       查看任务 <ArrowRightIcon size={15} />
                     </Link>
                   ) : (

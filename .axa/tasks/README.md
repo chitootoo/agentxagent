@@ -1,44 +1,44 @@
 # .axa/tasks · 任务存储与状态机
 
-这份文件面向人类，说明任务在磁盘上的组织方式。Agent 不需要直接读写这些文件，
-状态变更一律通过 `axa` CLI 或 Core SDK 完成。
+这份文件面向 Boss，说明任务在磁盘上的组织方式。worker 不需要直接读写这些文件，
+状态变更一律通过 `axa` CLI 或 Core SDK 完成。三种角色：Boss（人类）、secretary（秘书 Agent）、worker（执行 Agent）。
 
 ## 状态目录
 
-- `backlog/` — 待审核：人类创建或 Agent 发现的新工作
-- `todo/` — 已批准，可被 Agent 认领
+- `backlog/` — 待审核：Boss 创建或 worker 发现的新工作
+- `todo/` — 已批准，可被 worker 认领
 - `doing/` — 已认领，进行中
-- `review/` — 待验收：工作已完成，等待人类验收
+- `review/` — 待验收：工作已完成，等待 Boss 验收
 - `done/` — 已完成（无需验收，或已验收通过）
-- `archived/` — 已归档：终态，默认不显示；人类可在控制台追加需求后重新打开
+- `archived/` — 已归档：终态，默认不显示；Boss 可在控制台追加需求后重新打开
 
 ## 状态机
 
 ```
-                 human approve
+                  Boss approve
 backlog ─────────────────────────▶ todo
                                     │ ▲
-                       agent claim  │ │ release / 7 天未完成
+                     worker claim   │ │ release / 7 天未完成
                                     ▼ │
                                   doing
                                     │
-                             agent done
+                            worker done
                                     ▼
                        ┌──── review ────┐
-       human accept    │                │ human comment
+       Boss accept     │                │ Boss comment
               ┌────────┘                └──────────▶ todo
               ▼
             done ──────── 30 天 ───────▶ archived
               │                              │
-              └──── human comment ──▶ todo   └── human comment ──▶ todo
+              └──── Boss comment ──▶ todo   └── Boss comment ──▶ todo
 ```
 
-- 需要人工 review 的任务：`doing --done--> review --human accept--> done`。
+- 需要人工 review 的任务：`doing --done--> review --Boss accept--> done`。
 - 无需 review 的任务：`doing --done--> done`。
-- review / done / archived 收到人类追加需求后回到 `todo`，保留完整会话。
+- review / done / archived 收到 Boss 追加需求后回到 `todo`，保留完整会话。
 - doing 超过 7 天未完成，会在下一次项目操作时被自动释放回 `todo`。
 - done 超过 30 天，会在下一次项目操作时被自动归档到 `archived`。
-- archived 是终态；人类在控制台追加需求时任务会重新回到 `todo`。
+- archived 是终态；Boss 在控制台追加需求时任务会重新回到 `todo`。
 
 ## 任务文件夹
 

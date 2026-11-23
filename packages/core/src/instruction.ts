@@ -1,13 +1,21 @@
 export function defaultInstruction(projectName: string): string {
   return `---
 name: axa
-description: Use the axa CLI to pick up, track, and finish work in a project that stores tasks under .axa/. Trigger this skill when a repository contains .axa/SKILL.md, when the user asks you to work on axa tasks, or when you need to coordinate with other agents without duplicating effort.
+description: Use the axa CLI to pick up, track, and finish work in a project that stores tasks under .axa/. Trigger this skill when a repository contains .axa/SKILL.md, when the user asks you to work on axa tasks, or when you need to coordinate with other workers without duplicating effort.
 ---
 
 # axa 行动指南 · ${projectName}
 
 本项目使用 [axa](https://github.com/axa-project/agent-x-agent) 管理任务。
 任务状态只通过 CLI / SDK 变更；不要手工创建、修改、移动或删除 \`.axa/tasks/\` 下的任何文件。
+
+## 三种角色
+
+- **Boss**：人类。与控制台里的秘书对话，批准和验收任务。
+- **secretary**：秘书 Agent。理解 Boss 的需求，简单问题直接回答，耗时工作写成 axa 任务。
+- **worker**：你。只认领 \`todo\` 任务、执行、提交汇总；不创建验收结论。
+
+秘书创建的任务会直接进入 \`todo\`，通常不需要再等 Boss 批准。
 
 ## 开始工作
 
@@ -35,7 +43,7 @@ description: Use the axa CLI to pick up, track, and finish work in a project tha
    axa show 003
    \`\`\`
 
-   不要沿用上一轮或缓存中的任务内容。用户可能在你上次读取后追加或修改了要求，一律以本次读取到的最新内容为准。
+   不要沿用上一轮或缓存中的任务内容。Boss 可能在你上次读取后追加或修改了要求，一律以本次读取到的最新内容为准。
 
 5. 无法继续时立即释放，不要长期占用：
 
@@ -61,28 +69,28 @@ description: Use the axa CLI to pick up, track, and finish work in a project tha
    axa done 003
    \`\`\`
 
-\`axa done\` 要求最新一条会话是本轮 Agent 汇总，否则会报错并提示先执行 \`axa summary\`。
-需要人工 review 的任务会进入 \`.axa/tasks/review/\`，由人类在控制台验收；Agent 不得自行验收。
+\`axa done\` 要求最新一条会话是本轮 worker 汇总，否则会报错并提示先执行 \`axa summary\`。
+需要人工 review 的任务会进入 \`.axa/tasks/review/\`，由 Boss 在控制台验收；worker 不得自行验收。
 
 ## 迭代
 
-人类验收不通过或在任务完成后追加需求时，会在控制台追加一条用户消息。
+Boss 验收不通过或在任务完成后追加需求时，会在控制台追加一条用户消息。
 任务重新回到 \`todo\`，并保留完整会话；下一轮必须重新 claim，由 claim 签发新的 agent id。
-下一轮 Agent 必须按序号读完所有轮次再继续。
+下一轮 worker 必须按序号读完所有轮次再继续。
 
 ## 发现新工作
 
-范围外的工作先放入 backlog，等待人类批准，不要混入当前改动：
+范围外的工作先放入 backlog，等待 Boss 批准，不要混入当前改动：
 
 \`\`\`bash
 axa create "补充部署文档" --priority P2 --description "验收标准..."
 \`\`\`
 
-人类在控制台批准后，任务才会进入 \`todo\`。
+Boss 在控制台批准后，任务才会进入 \`todo\`。
 
-## 多 Agent 并行：用 worktree 隔离代码
+## 多 worker 并行：用 worktree 隔离代码
 
-任务锁只保护单个任务的状态变更，不保护业务代码。多个 Agent 在同一工作区并行改代码时，
+任务锁只保护单个任务的状态变更，不保护业务代码。多个 worker 在同一工作区并行改代码时，
 未提交改动、构建产物与 git 索引会互相污染。
 
 - 先在主工作区认领任务，再为任务创建独立 worktree：
@@ -104,8 +112,8 @@ axa create "补充部署文档" --priority P2 --description "验收标准..."
 - 任务文件夹中的编号 Markdown 统一称「会话记录」，文件名后缀是它的标题。
 - \`--title\` 要一眼看出核心内容，避免「本轮实现」「方案评估」这类泛化标题或整段原文。
 - 使用 CLI / SDK 变更状态；不要手工修改 \`task.json\`、会话记录或任务目录。
-- 不要把任务改成无需 review；是否 review 由人类创建任务时决定。
-- 不要执行验收类操作；验收由人类在控制台完成。
+- 不要把任务改成无需 review；是否 review 由 Boss 创建任务时决定。
+- 不要执行验收类操作；验收由 Boss 在控制台完成。
 - 不要删除 \`.axa/SKILL.md\`。
 - CLI 不可用时，报告问题而不是手工改状态。
 
@@ -128,45 +136,45 @@ axa create "补充部署文档" --priority P2 --description "验收标准..."
 export function defaultTasksReadme(): string {
   return `# .axa/tasks · 任务存储与状态机
 
-这份文件面向人类，说明任务在磁盘上的组织方式。Agent 不需要直接读写这些文件，
-状态变更一律通过 \`axa\` CLI 或 Core SDK 完成。
+这份文件面向 Boss，说明任务在磁盘上的组织方式。worker 不需要直接读写这些文件，
+状态变更一律通过 \`axa\` CLI 或 Core SDK 完成。三种角色：Boss（人类）、secretary（秘书 Agent）、worker（执行 Agent）。
 
 ## 状态目录
 
-- \`backlog/\` — 待审核：人类创建或 Agent 发现的新工作
-- \`todo/\` — 已批准，可被 Agent 认领
+- \`backlog/\` — 待审核：Boss 创建或 worker 发现的新工作
+- \`todo/\` — 已批准，可被 worker 认领
 - \`doing/\` — 已认领，进行中
-- \`review/\` — 待验收：工作已完成，等待人类验收
+- \`review/\` — 待验收：工作已完成，等待 Boss 验收
 - \`done/\` — 已完成（无需验收，或已验收通过）
-- \`archived/\` — 已归档：终态，默认不显示；人类可在控制台追加需求后重新打开
+- \`archived/\` — 已归档：终态，默认不显示；Boss 可在控制台追加需求后重新打开
 
 ## 状态机
 
 \`\`\`
-                 human approve
+                  Boss approve
 backlog ─────────────────────────▶ todo
                                     │ ▲
-                       agent claim  │ │ release / 7 天未完成
+                     worker claim   │ │ release / 7 天未完成
                                     ▼ │
                                   doing
                                     │
-                             agent done
+                            worker done
                                     ▼
                        ┌──── review ────┐
-       human accept    │                │ human comment
+       Boss accept     │                │ Boss comment
               ┌────────┘                └──────────▶ todo
               ▼
             done ──────── 30 天 ───────▶ archived
               │                              │
-              └──── human comment ──▶ todo   └── human comment ──▶ todo
+              └──── Boss comment ──▶ todo   └── Boss comment ──▶ todo
 \`\`\`
 
-- 需要人工 review 的任务：\`doing --done--> review --human accept--> done\`。
+- 需要人工 review 的任务：\`doing --done--> review --Boss accept--> done\`。
 - 无需 review 的任务：\`doing --done--> done\`。
-- review / done / archived 收到人类追加需求后回到 \`todo\`，保留完整会话。
+- review / done / archived 收到 Boss 追加需求后回到 \`todo\`，保留完整会话。
 - doing 超过 7 天未完成，会在下一次项目操作时被自动释放回 \`todo\`。
 - done 超过 30 天，会在下一次项目操作时被自动归档到 \`archived\`。
-- archived 是终态；人类在控制台追加需求时任务会重新回到 \`todo\`。
+- archived 是终态；Boss 在控制台追加需求时任务会重新回到 \`todo\`。
 
 ## 任务文件夹
 

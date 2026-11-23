@@ -1,4 +1,5 @@
 import { InboxView } from "@/components/inbox-view";
+import { decodeRouteParam } from "@/lib/project-link";
 
 interface ProjectPageProps {
   params: Promise<{ id: string }>;
@@ -6,5 +7,5 @@ interface ProjectPageProps {
 
 export default async function ProjectPage({ params }: ProjectPageProps) {
   const { id } = await params;
-  return <InboxView initialProjectId={id} />;
+  return <InboxView initialProjectId={decodeRouteParam(id)} />;
 }

@@ -22,6 +22,7 @@ import {
   stringValue,
 } from "./frontmatter.js";
 import { writeFileAtomic } from "./fs-utils.js";
+import { enqueueInboxNote } from "./inbox.js";
 import { defaultInstruction, defaultTasksReadme } from "./instruction.js";
 import { withLock } from "./lock.js";
 import {
@@ -1139,6 +1140,25 @@ function hasAgentSummary(task: Task): boolean {
   return task.conversation.at(-1)?.role === "agent";
 }
 
+/** Drop a completion note into the secretary inbox; failures are tolerated. */
+async function notifyTaskCompleted(projectRoot: string, task: Task, actor: string): Promise<void> {
+  const { listRegisteredProjects } = await import("./config.js");
+  const projects = await listRegisteredProjects();
+  const project = projects.find((candidate) => resolve(candidate.path) === resolve(projectRoot));
+  const lastSeq = task.conversation.at(-1)?.seq ?? "0";
+  await enqueueInboxNote({
+    from: actor,
+    projectId: project?.id ?? projectRoot,
+    taskId: task.id,
+    key: `${task.id}:${lastSeq}:${task.status}`,
+    body: [
+      `任务 ${task.id}「${task.title}」已完成（状态：${task.status}）。`,
+      ``,
+      `请查看项目 \`${project?.id ?? projectRoot}\` 下该任务的目录与会话，核对完成情况并向 Boss 汇报。`,
+    ].join("\n"),
+  });
+}
+
 export async function completeTask(
   projectRoot: string,
   taskId: string,
@@ -1167,7 +1187,7 @@ export async function completeTask(
     }
     const completedBy = actor ?? tx.task.claimedBy ?? "unknown";
     const nextStatus: TaskStatus = tx.task.reviewRequired ? "review" : "done";
-    return tx.move(nextStatus, (next) => {
+    const completed = await tx.move(nextStatus, (next) => {
       next.extra = {
         ...next.extra,
         completed_at: new Date().toISOString(),
@@ -1176,6 +1196,11 @@ export async function completeTask(
       delete next.claimedBy;
       delete next.claimedAt;
     });
+
+    // Notify the secretary via its inbox. A failure here is non-fatal: the
+    // secretary's periodic reconciliation will re-enqueue any missed task.
+    await notifyTaskCompleted(projectRoot, completed, completedBy).catch(() => undefined);
+    return completed;
   });
 }
 

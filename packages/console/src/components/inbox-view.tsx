@@ -15,6 +15,7 @@ import {
   matchesFilter,
   sortInbox,
 } from "@/lib/inbox";
+import { taskLink } from "@/lib/project-link";
 import { priorityLabel, statusMeta } from "@/lib/task-meta";
 import { useActor } from "@/lib/use-actor";
 import { usePullToRefresh } from "@/lib/use-pull-to-refresh";
@@ -144,7 +145,7 @@ export function InboxView({ initialProjectId }: InboxViewProps) {
       if (!response.task) throw new Error("服务端未返回新任务。");
       setNotice(`已创建 #${response.task.id}`);
       await load(true);
-      router.push(`/projects/${draft.projectId}/tasks/${response.task.id}`);
+      router.push(taskLink(draft.projectId, response.task.id));
       return true;
     } catch (cause) {
       setActionError(errorMessage(cause));
@@ -191,11 +192,11 @@ export function InboxView({ initialProjectId }: InboxViewProps) {
       <header className="inbox-header">
         <div className="inbox-heading">
           <div>
-            <h1>{selectedProject?.name ?? "消息"}</h1>
+            <h1>{selectedProject?.name ?? "任务"}</h1>
             <p>
               {attentionCount > 0
                 ? `${attentionCount} 个任务等待你处理`
-                : "所有 Agent 会话都在这里"}
+                : "所有 worker 会话都在这里"}
             </p>
           </div>
           <div className="inbox-header-actions">
@@ -359,10 +360,10 @@ export function InboxView({ initialProjectId }: InboxViewProps) {
             <input
               maxLength={60}
               onChange={(event) => setActor(event.target.value)}
-              placeholder="human"
+              placeholder="Boss"
               value={actor}
             />
-            <small>控制台代表人类身份，操作会记录到动态时间线。</small>
+            <small>控制台代表 Boss 身份，操作会记录到动态时间线。</small>
           </label>
           <div className="settings-action">
             <div>
@@ -403,7 +404,7 @@ function ConversationRow({ item }: { item: InboxItem }) {
   return (
     <Link
       className={`conversation-row status-${meta.className}`}
-      href={`/projects/${project.id}/tasks/${task.id}`}
+      href={taskLink(project.id, task.id)}
     >
       <span className={`conversation-avatar status-${meta.className}`}>
         {meta.glyph}

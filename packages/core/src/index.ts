@@ -1,3 +1,10 @@
+export type { ActivityEntry, ActivityEntryInput } from "./activity-log.js";
+export {
+  appendActivityEntry,
+  getActivityLogPath,
+  getActivityLogSize,
+  readActivityEntries,
+} from "./activity-log.js";
 export type { RegisterProjectInput } from "./config.js";
 export {
   getAxaHome,
@@ -9,7 +16,9 @@ export {
   removeRegisteredProject,
   resolveCliProject,
   setDefaultProject,
+  syncRegisteredProjectPath,
 } from "./config.js";
+export { projectLink, taskLink } from "./deep-link.js";
 export type { AxaErrorCode } from "./errors.js";
 export { AxaError, isAxaError } from "./errors.js";
 export {
@@ -28,6 +37,15 @@ export {
   slugifyTitle,
   stringifyFrontmatterData,
 } from "./frontmatter.js";
+export type { InboxNote, InboxNoteInput, InboxState } from "./inbox.js";
+export {
+  discardInboxNote,
+  enqueueInboxNote,
+  hasInboxNote,
+  INBOX_STATES,
+  listInboxNotes,
+  moveInboxNote,
+} from "./inbox.js";
 export { defaultInstruction, defaultTasksReadme } from "./instruction.js";
 export {
   findProjectRoot,
@@ -40,6 +58,17 @@ export {
   tasksReadmePath,
   toAbsolutePath,
 } from "./paths.js";
+export type { ProjectIdentity, ProjectLocalConfig } from "./project-id.js";
+export {
+  isPortableProjectId,
+  normalizeGitRemoteUrl,
+  PROJECT_CONFIG_FILE,
+  projectConfigPath,
+  readGitRemoteUrl,
+  readProjectLocalConfig,
+  resolveProjectIdentity,
+  writeProjectLocalConfig,
+} from "./project-id.js";
 export {
   ARCHIVE_AFTER_MS,
   acceptTask,

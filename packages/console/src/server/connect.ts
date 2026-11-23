@@ -1,7 +1,8 @@
 import { createConnectRouter, type Interceptor } from "@connectrpc/connect";
 import { createFetchHandler } from "@connectrpc/connect/protocol";
-import { TaskService } from "@contagxt/axa-proto";
+import { SecretaryService, TaskService } from "@contagxt/axa-proto";
 import { toConnectError } from "./errors";
+import { secretaryServiceImpl } from "./secretary.service";
 import { taskServiceImpl } from "./task.service";
 
 const errorInterceptor: Interceptor = (next) => async (request) => {
@@ -14,6 +15,7 @@ const errorInterceptor: Interceptor = (next) => async (request) => {
 
 const router = createConnectRouter({ interceptors: [errorInterceptor] });
 router.service(TaskService, taskServiceImpl);
+router.service(SecretaryService, secretaryServiceImpl);
 
 const routes = new Map(
   router.handlers.map((handler) => [handler.requestPath, createFetchHandler(handler)]),

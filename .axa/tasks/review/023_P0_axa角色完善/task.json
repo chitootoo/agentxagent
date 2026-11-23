@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "id": "023",
+  "title": "axa角色完善",
+  "priority": "P0",
+  "status": "review",
+  "reviewRequired": true,
+  "createdAt": "2026-11-21T16:10:38.658Z",
+  "updatedAt": "2026-11-21T16:30:28.746Z",
+  "tags": [],
+  "extra": {
+    "created_by": "human",
+    "updated_by": "trae_26-11-22_00:12:34.318",
+    "completed_at": "2026-11-21T16:30:28.746Z",
+    "completed_by": "trae_26-11-22_00:12:34.318"
+  }
+}

@@ -1,32 +1,51 @@
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdir, mkdtemp, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   acceptTask,
+  appendActivityEntry,
   approveTask,
   claimTask,
   commentTask,
   completeTask,
   createTask,
   deleteTask,
+  enqueueInboxNote,
+  getActivityLogPath,
+  getActivityLogSize,
   getTask,
+  hasInboxNote,
   initProject,
+  isPortableProjectId,
+  listInboxNotes,
   listRegisteredProjects,
   listTasks,
   maintainProject,
+  moveInboxNote,
+  normalizeGitRemoteUrl,
+  projectLink,
+  readActivityEntries,
   readConfig,
   readProjectInfo,
+  readProjectLocalConfig,
   registerProject,
   releaseStaleTasks,
   releaseTask,
   removeRegisteredProject,
   resolveCliProject,
+  resolveProjectIdentity,
   scanTasks,
   summarizeTask,
+  taskLink,
   toAbsolutePath,
   updateTask,
+  writeProjectLocalConfig,
 } from "./index.js";
+
+const execFileAsync = promisify(execFile);
 
 let workspace: string;
 let projectRoot: string;
@@ -690,22 +709,23 @@ describe("project registry", () => {
 
     const first = await registerProject({ path: projectRoot, name: "Demo" });
     const second = await registerProject({ path: secondRoot, name: "Second" });
-    expect(first.id).toBe("demo");
-    expect(second.id).toBe("second");
+    expect(first.id).toMatch(/^local:/u);
+    expect(second.id).toMatch(/^local:/u);
+    expect(first.id).not.toBe(second.id);
 
     const config = await readConfig();
     expect(config.projects).toHaveLength(2);
-    expect(config.defaultProjectId).toBe("demo");
+    expect(config.defaultProjectId).toBe(first.id);
 
     const listed = await listRegisteredProjects();
-    expect(listed.find((project) => project.id === "second")?.total).toBe(0);
+    expect(listed.find((project) => project.id === second.id)?.total).toBe(0);
 
     expect(await resolveCliProject("second")).toBe(secondRoot);
 
-    await removeRegisteredProject("demo");
+    await removeRegisteredProject(first.id);
     const after = await readConfig();
-    expect(after.projects.map((project) => project.id)).toEqual(["second"]);
-    expect(after.defaultProjectId).toBe("second");
+    expect(after.projects.map((project) => project.id)).toEqual([second.id]);
+    expect(after.defaultProjectId).toBe(second.id);
   });
 
   it("initializes a missing project on demand when registering", async () => {
@@ -715,7 +735,7 @@ describe("project registry", () => {
       name: "Fresh",
       initialize: true,
     });
-    expect(project.id).toBe("fresh");
+    expect(project.id).toMatch(/^local:/u);
     expect(await resolveCliProject("fresh")).toBe(fresh);
   });
 
@@ -723,5 +743,309 @@ describe("project registry", () => {
     expect(toAbsolutePath("~")).toBe(homedir());
     expect(toAbsolutePath("~/demo")).toBe(join(homedir(), "demo"));
     expect(toAbsolutePath("  ~/demo  ")).toBe(join(homedir(), "demo"));
+  });
+});
+
+describe("portable project identity", () => {
+  it("persists a stable local id and keeps one registry entry", async () => {
+    const first = await registerProject({ path: projectRoot, name: "Demo" });
+    expect(first.id).toMatch(/^local:[0-9a-f-]+$/u);
+
+    const local = await readProjectLocalConfig(projectRoot);
+    expect(local?.projectId).toBe(first.id);
+
+    const again = await registerProject({ path: projectRoot, name: "Demo renamed" });
+    expect(again.id).toBe(first.id);
+    expect((await readConfig()).projects).toHaveLength(1);
+  });
+
+  it("normalizes SSH and HTTPS remotes to the same id", () => {
+    const expected = "github.com/chitootoo/agentxagent";
+    expect(normalizeGitRemoteUrl("git@github.com:chitootoo/agentxagent.git")).toBe(expected);
+    expect(normalizeGitRemoteUrl("ssh://git@github.com/chitootoo/agentxagent.git")).toBe(expected);
+    expect(normalizeGitRemoteUrl("https://github.com/chitootoo/agentxagent.git")).toBe(expected);
+    expect(normalizeGitRemoteUrl("https://github.com/chitootoo/agentxagent")).toBe(expected);
+    expect(normalizeGitRemoteUrl("/local/repo")).toBeUndefined();
+    expect(normalizeGitRemoteUrl("")).toBeUndefined();
+  });
+
+  it("recognizes portable ids without the git: prefix", () => {
+    expect(isPortableProjectId("github.com/chitootoo/agentxagent")).toBe(true);
+    expect(isPortableProjectId("local:9f3c")).toBe(true);
+    expect(isPortableProjectId("git:github.com/chitootoo/agentxagent")).toBe(false);
+    expect(isPortableProjectId("agentxagent")).toBe(false);
+  });
+
+  it("upgrades a stored git: id to the prefix-free form without a remote", async () => {
+    await writeProjectLocalConfig(projectRoot, {
+      version: 1,
+      projectId: "git:github.com/acme/demo",
+    });
+
+    const identity = await resolveProjectIdentity(projectRoot);
+
+    expect(identity.id).toBe("github.com/acme/demo");
+    expect(identity.previousId).toBe("git:github.com/acme/demo");
+    expect((await readProjectLocalConfig(projectRoot))?.projectId).toBe("github.com/acme/demo");
+  });
+
+  it("upgrades a local id to the git remote id and migrates the registry", async () => {
+    const local = await registerProject({ path: projectRoot, name: "Demo" });
+    expect(local.id).toMatch(/^local:/u);
+
+    await execFileAsync("git", ["init", "-q", projectRoot]);
+    await execFileAsync("git", [
+      "-C",
+      projectRoot,
+      "remote",
+      "add",
+      "origin",
+      "git@github.com:acme/demo.git",
+    ]);
+
+    const identity = await resolveProjectIdentity(projectRoot);
+    expect(identity.id).toBe("github.com/acme/demo");
+    expect(identity.previousId).toBe(local.id);
+
+    const upgraded = await registerProject({ path: projectRoot, name: "Demo" });
+    expect(upgraded.id).toBe("github.com/acme/demo");
+
+    const config = await readConfig();
+    expect(config.projects).toHaveLength(1);
+    expect(config.projects[0]?.id).toBe("github.com/acme/demo");
+    expect(config.defaultProjectId).toBe("github.com/acme/demo");
+  });
+
+  it("remaps a moved project by project id", async () => {
+    const registered = await registerProject({ path: projectRoot, name: "Demo" });
+    const movedRoot = join(workspace, "moved-demo");
+    await rename(projectRoot, movedRoot);
+
+    expect(await resolveCliProject(movedRoot)).toBe(movedRoot);
+
+    const config = await readConfig();
+    expect(config.projects).toHaveLength(1);
+    expect(config.projects[0]?.id).toBe(registered.id);
+    expect(config.projects[0]?.path).toBe(movedRoot);
+    projectRoot = movedRoot;
+  });
+
+  it("honors AXA_HOME when switching registries", async () => {
+    await registerProject({ path: projectRoot, name: "Demo" });
+    expect((await readConfig()).projects).toHaveLength(1);
+
+    const otherHome = join(workspace, "other-home");
+    process.env.AXA_HOME = otherHome;
+    try {
+      expect((await readConfig()).projects).toHaveLength(0);
+    } finally {
+      process.env.AXA_HOME = axaHome;
+    }
+    expect((await readConfig()).projects).toHaveLength(1);
+  });
+});
+
+describe("secretary inbox", () => {
+  it("enqueues a human-readable note and moves it through states", async () => {
+    const note = await enqueueInboxNote({
+      from: "worker",
+      projectId: "github.com/acme/demo",
+      taskId: "001",
+      key: "001:002:done",
+      body: "任务 001 已完成，请查收。",
+    });
+    expect(note.state).toBe("unread");
+
+    const raw = await readFile(note.filePath, "utf8");
+    expect(raw).toContain("任务 001 已完成");
+    expect(raw).toContain('key: "001:002:done"');
+
+    const unread = await listInboxNotes("unread");
+    expect(unread.some((entry) => entry.id === note.id)).toBe(true);
+    expect(await hasInboxNote("001:002:done")).toBe(true);
+
+    await moveInboxNote(note, "processing");
+    expect((await listInboxNotes("unread")).some((entry) => entry.id === note.id)).toBe(false);
+    const processing = await listInboxNotes("processing");
+    const inProcessing = processing.find((entry) => entry.id === note.id);
+    expect(inProcessing).toBeDefined();
+    if (!inProcessing) return;
+
+    await moveInboxNote(inProcessing, "processed");
+    expect((await listInboxNotes("processed")).some((entry) => entry.id === note.id)).toBe(true);
+  });
+
+  it("does not enqueue a duplicate key twice via reconciliation check", async () => {
+    await enqueueInboxNote({
+      from: "worker",
+      projectId: "github.com/acme/demo",
+      taskId: "002",
+      key: "002:001:done",
+      body: "任务 002 已完成。",
+    });
+    expect(await hasInboxNote("002:001:done")).toBe(true);
+    expect(await hasInboxNote("002:002:done")).toBe(false);
+  });
+
+  it("enqueues a note when a task is completed", async () => {
+    const created = await createTask({
+      projectRoot,
+      title: "Inbox notify",
+      body: "test",
+      actor: "secretary",
+      status: "todo",
+      extra: { created_by: "secretary" },
+    });
+    await claimTask({ projectRoot, taskId: created.id, agentPlatform: "worker" });
+    await summarizeTask(projectRoot, created.id, "Implemented.");
+    await completeTask(projectRoot, created.id);
+
+    const notes = await listInboxNotes("unread");
+    expect(notes.some((note) => note.taskId === created.id)).toBe(true);
+  });
+});
+
+describe("legacy config migration", () => {
+  function legacyConfig(projects: Array<{ id: string; path: string }>) {
+    return {
+      version: 1,
+      projects: projects.map(({ id, path }) => ({
+        id,
+        name: id,
+        path,
+        addedAt: "2026-11-04T16:55:48.681Z",
+      })),
+      defaultProjectId: projects[0]?.id,
+    };
+  }
+
+  async function writeLegacyConfig(config: unknown): Promise<void> {
+    await mkdir(axaHome, { recursive: true });
+    await writeFile(join(axaHome, "config.json"), `${JSON.stringify(config, null, 2)}\n`, "utf8");
+  }
+
+  it("upgrades name-based ids on load and persists the result", async () => {
+    await writeLegacyConfig(legacyConfig([{ id: "demo", path: projectRoot }]));
+
+    const config = await readConfig();
+
+    expect(config.projects).toHaveLength(1);
+    expect(config.projects[0]?.id).toMatch(/^local:/u);
+    expect(config.defaultProjectId).toBe(config.projects[0]?.id);
+    const persisted = JSON.parse(await readFile(join(axaHome, "config.json"), "utf8")) as {
+      projects: Array<{ id: string }>;
+    };
+    expect(persisted.projects[0]?.id).toBe(config.projects[0]?.id);
+  });
+
+  it("is idempotent", async () => {
+    await writeLegacyConfig(legacyConfig([{ id: "demo", path: projectRoot }]));
+
+    const first = await readConfig();
+    const afterFirst = await readFile(join(axaHome, "config.json"), "utf8");
+    const second = await readConfig();
+    const afterSecond = await readFile(join(axaHome, "config.json"), "utf8");
+
+    expect(second).toEqual(first);
+    expect(afterSecond).toBe(afterFirst);
+  });
+
+  it("migrates stored git: prefixed registry ids without needing the project", async () => {
+    await writeLegacyConfig(
+      legacyConfig([{ id: "git:github.com/acme/demo", path: join(workspace, "missing") }]),
+    );
+
+    const config = await readConfig();
+    expect(config.projects[0]?.id).toBe("github.com/acme/demo");
+    expect(config.defaultProjectId).toBe("github.com/acme/demo");
+  });
+
+  it("leaves portable ids untouched", async () => {
+    const portableId = "github.com/acme/demo";
+    await writeLegacyConfig(legacyConfig([{ id: portableId, path: projectRoot }]));
+
+    const config = await readConfig();
+    expect(config.projects[0]?.id).toBe(portableId);
+  });
+
+  it("preserves entries whose project directory no longer exists", async () => {
+    await writeLegacyConfig(
+      legacyConfig([
+        { id: "demo", path: projectRoot },
+        { id: "gone", path: join(workspace, "missing") },
+      ]),
+    );
+
+    const config = await readConfig();
+    expect(config.projects).toHaveLength(2);
+    expect(config.projects.find((project) => project.name === "gone")?.id).toBe("gone");
+  });
+
+  it("upgrades to the git remote id when a remote is available", async () => {
+    await execFileAsync("git", ["init", "-q", projectRoot]);
+    await execFileAsync("git", [
+      "-C",
+      projectRoot,
+      "remote",
+      "add",
+      "origin",
+      "git@github.com:acme/demo.git",
+    ]);
+    await writeLegacyConfig(legacyConfig([{ id: "demo", path: projectRoot }]));
+
+    const config = await readConfig();
+    expect(config.projects[0]?.id).toBe("github.com/acme/demo");
+  });
+});
+
+describe("console deep links", () => {
+  const projectId = "github.com/chitootoo/agentxagent";
+
+  it("encodes a portable project id into one path segment", () => {
+    expect(projectLink(projectId)).toBe("/projects/github.com%2Fchitootoo%2Fagentxagent");
+  });
+
+  it("encodes both the project and task segments", () => {
+    expect(taskLink(projectId, "024")).toBe(
+      "/projects/github.com%2Fchitootoo%2Fagentxagent/tasks/024",
+    );
+  });
+
+  it("encodes local ids as well", () => {
+    expect(projectLink("local:9f3c")).toBe("/projects/local%3A9f3c");
+  });
+});
+
+describe("activity log", () => {
+  const entry = (action: string) => ({
+    projectId: "github.com/acme/demo",
+    taskId: "001",
+    taskTitle: "Demo",
+    action,
+    actor: "alice",
+  });
+
+  it("stores human-readable JSONL entries under AXA_HOME", async () => {
+    await appendActivityEntry(entry("create"));
+    await appendActivityEntry(entry("claim"));
+
+    const raw = await readFile(getActivityLogPath(), "utf8");
+    expect(raw.trim().split("\n")).toHaveLength(2);
+    expect(JSON.parse(raw.trim().split("\n")[0] ?? "")).toMatchObject(entry("create"));
+    const entries = await readActivityEntries();
+    expect(entries.map((e) => [e.id, e.action])).toEqual([
+      [1, "create"],
+      [2, "claim"],
+    ]);
+    expect(entries[0]?.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/u);
+  });
+
+  it("skips malformed lines and reports source size", async () => {
+    await appendActivityEntry(entry("create"));
+    const path = getActivityLogPath();
+    const before = await getActivityLogSize();
+    await writeFile(path, `${await readFile(path, "utf8")}not json\n`, "utf8");
+    expect(await getActivityLogSize()).toBeGreaterThan(before);
+    expect(await readActivityEntries()).toHaveLength(1);
   });
 });

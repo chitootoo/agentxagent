@@ -1,12 +1,20 @@
 ---
 name: axa
-description: Use the axa CLI to pick up, track, and finish work in a project that stores tasks under .axa/. Trigger this skill when a repository contains .axa/SKILL.md, when the user asks you to work on axa tasks, or when you need to coordinate with other agents without duplicating effort.
+description: Use the axa CLI to pick up, track, and finish work in a project that stores tasks under .axa/. Trigger this skill when a repository contains .axa/SKILL.md, when the user asks you to work on axa tasks, or when you need to coordinate with other workers without duplicating effort.
 ---
 
 # axa 行动指南 · AgentxAgent
 
 本项目使用 [axa](https://github.com/axa-project/agent-x-agent) 管理任务。
 任务状态只通过 CLI / SDK 变更；不要手工创建、修改、移动或删除 `.axa/tasks/` 下的任何文件。
+
+## 三种角色
+
+- **Boss**：人类。与控制台里的秘书对话，批准和验收任务。
+- **secretary**：秘书 Agent。理解 Boss 的需求，简单问题直接回答，耗时工作写成 axa 任务。
+- **worker**：你。只认领 `todo` 任务、执行、提交汇总；不创建验收结论。
+
+秘书创建的任务会直接进入 `todo`，通常不需要再等 Boss 批准。worker 不要修改任务归属或验收状态。
 
 ## 开始工作
 
@@ -34,7 +42,7 @@ description: Use the axa CLI to pick up, track, and finish work in a project tha
    axa show 003
    ```
 
-   不要沿用上一轮或缓存中的任务内容。用户可能在你上次读取后追加或修改了要求，一律以本次读取到的最新内容为准。
+   不要沿用上一轮或缓存中的任务内容。Boss 可能在你上次读取后追加或修改了要求，一律以本次读取到的最新内容为准。
 
 5. 无法继续时立即释放，不要长期占用：
 
@@ -60,28 +68,28 @@ description: Use the axa CLI to pick up, track, and finish work in a project tha
    axa done 003
    ```
 
-`axa done` 要求最新一条会话是本轮 Agent 汇总，否则会报错并提示先执行 `axa summary`。
-需要人工 review 的任务会进入 `.axa/tasks/review/`，由人类在控制台验收；Agent 不得自行验收。
+`axa done` 要求最新一条会话是本轮 worker 汇总，否则会报错并提示先执行 `axa summary`。
+需要人工 review 的任务会进入 `.axa/tasks/review/`，由 Boss 在控制台验收；worker 不得自行验收。
 
 ## 迭代
 
-人类验收不通过或在任务完成后追加需求时，会在控制台追加一条用户消息。
+Boss 验收不通过或在任务完成后追加需求时，会在控制台追加一条用户消息。
 任务重新回到 `todo`，并保留完整会话；下一轮必须重新 claim，由 claim 签发新的 agent id。
-下一轮 Agent 必须按序号读完所有轮次再继续。
+下一轮 worker 必须按序号读完所有轮次再继续。
 
 ## 发现新工作
 
-范围外的工作先放入 backlog，等待人类批准，不要混入当前改动：
+范围外的工作先放入 backlog，等待 Boss 批准，不要混入当前改动：
 
 ```bash
 axa create "补充部署文档" --priority P2 --description "验收标准..."
 ```
 
-人类在控制台批准后，任务才会进入 `todo`。
+Boss 在控制台批准后，任务才会进入 `todo`。
 
-## 多 Agent 并行：用 worktree 隔离代码
+## 多 worker 并行：用 worktree 隔离代码
 
-任务锁只保护单个任务的状态变更，不保护业务代码。多个 Agent 在同一工作区并行改代码时，
+任务锁只保护单个任务的状态变更，不保护业务代码。多个 worker 在同一工作区并行改代码时，
 未提交改动、构建产物与 git 索引会互相污染。
 
 - 先在主工作区认领任务，再为任务创建独立 worktree：
@@ -103,8 +111,8 @@ axa create "补充部署文档" --priority P2 --description "验收标准..."
 - 任务文件夹中的编号 Markdown 统一称「会话记录」，文件名后缀是它的标题。
 - `--title` 要一眼看出核心内容，避免「本轮实现」「方案评估」这类泛化标题或整段原文。
 - 使用 CLI / SDK 变更状态；不要手工修改 `task.json`、会话记录或任务目录。
-- 不要把任务改成无需 review；是否 review 由人类创建任务时决定。
-- 不要执行验收类操作；验收由人类在控制台完成。
+- 不要把任务改成无需 review；是否 review 由 Boss 创建任务时决定。
+- 不要执行验收类操作；验收由 Boss 在控制台完成。
 - 不要删除 `.axa/SKILL.md`。
 - CLI 不可用时，报告问题而不是手工改状态。
 

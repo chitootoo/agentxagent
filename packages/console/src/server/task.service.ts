@@ -200,13 +200,13 @@ function toTask(task: CoreTask): Task {
   });
 }
 
-function logTask(
+async function logTask(
   projectId: string,
   task: CoreTask,
   action: string,
   actor: string | undefined,
-): void {
-  recordActivity({
+): Promise<void> {
+  await recordActivity({
     projectId,
     taskId: task.id,
     taskTitle: task.title,
@@ -244,10 +244,10 @@ export const taskServiceImpl: ServiceImpl<typeof TaskService> = {
     const project = await requireProject(req.projectId);
     const maintenance = await maintainProject(project.path);
     for (const task of maintenance.released) {
-      logTask(project.id, task, "release_stale", "axa");
+      await logTask(project.id, task, "release_stale", "axa");
     }
     for (const task of maintenance.archived) {
-      logTask(project.id, task, "archive", "axa");
+      await logTask(project.id, task, "archive", "axa");
     }
     const statuses = req.statuses
       .map(statusFromProto)
@@ -289,7 +289,7 @@ export const taskServiceImpl: ServiceImpl<typeof TaskService> = {
       extra: extraFromFrontmatter(req.frontmatter),
       ...(req.actor.trim() ? { actor: req.actor.trim() } : {}),
     });
-    logTask(project.id, task, "create", req.actor);
+    await logTask(project.id, task, "create", req.actor);
     return create(CreateTaskResponseSchema, { task: toTask(task) });
   },
 
@@ -307,21 +307,21 @@ export const taskServiceImpl: ServiceImpl<typeof TaskService> = {
       tags: req.tags,
       extra: extraFromFrontmatter(req.frontmatter),
     });
-    logTask(project.id, task, "update", req.actor);
+    await logTask(project.id, task, "update", req.actor);
     return create(UpdateTaskResponseSchema, { task: toTask(task) });
   },
 
   async deleteTask(req: DeleteTaskRequest): Promise<DeleteTaskResponse> {
     const project = await requireProject(req.projectId);
     const task = await deleteTask(project.path, req.taskId);
-    logTask(project.id, task, "delete", req.actor);
+    await logTask(project.id, task, "delete", req.actor);
     return create(DeleteTaskResponseSchema, { task: toTask(task) });
   },
 
   async approveTask(req) {
     const project = await requireProject(req.projectId);
     const task = await approveTask(project.path, req.taskId, req.actor);
-    logTask(project.id, task, "approve", req.actor);
+    await logTask(project.id, task, "approve", req.actor);
     return create(ApproveTaskResponseSchema, { task: toTask(task) });
   },
 
@@ -333,7 +333,7 @@ export const taskServiceImpl: ServiceImpl<typeof TaskService> = {
       ...(req.next ? { next: true } : {}),
       agentPlatform: req.actor.trim() || "console",
     });
-    logTask(project.id, task, "claim", req.actor);
+    await logTask(project.id, task, "claim", req.actor);
     return create(ClaimTaskResponseSchema, { task: toTask(task) });
   },
 
@@ -343,21 +343,21 @@ export const taskServiceImpl: ServiceImpl<typeof TaskService> = {
       ...(req.actor.trim() ? { actor: req.actor.trim() } : {}),
       force: true,
     });
-    logTask(project.id, task, "release", req.actor);
+    await logTask(project.id, task, "release", req.actor);
     return create(ReleaseTaskResponseSchema, { task: toTask(task) });
   },
 
   async completeTask(req) {
     const project = await requireProject(req.projectId);
     const task = await completeTask(project.path, req.taskId, req.actor, { force: true });
-    logTask(project.id, task, "complete", req.actor);
+    await logTask(project.id, task, "complete", req.actor);
     return create(CompleteTaskResponseSchema, { task: toTask(task) });
   },
 
   async acceptTask(req) {
     const project = await requireProject(req.projectId);
     const task = await acceptTask(project.path, req.taskId, req.actor);
-    logTask(project.id, task, "accept", req.actor);
+    await logTask(project.id, task, "accept", req.actor);
     return create(AcceptTaskResponseSchema, { task: toTask(task) });
   },
 
@@ -375,7 +375,7 @@ export const taskServiceImpl: ServiceImpl<typeof TaskService> = {
       ...(req.title.trim() ? { title: req.title.trim() } : {}),
       ...(req.actor.trim() ? { actor: req.actor.trim() } : {}),
     });
-    logTask(project.id, task, role === "user" ? "comment" : "summary", req.actor);
+    await logTask(project.id, task, role === "user" ? "comment" : "summary", req.actor);
     return create(AppendTaskMessageResponseSchema, { task: toTask(task) });
   },
 
@@ -384,7 +384,7 @@ export const taskServiceImpl: ServiceImpl<typeof TaskService> = {
     const seconds = req.olderThanSeconds > 0 ? req.olderThanSeconds : STALE_CLAIM_MS / 1000;
     const result = await releaseStaleTasks(project.path, seconds * 1000);
     for (const task of result.released) {
-      logTask(project.id, task, "release_stale", req.actor);
+      await logTask(project.id, task, "release_stale", req.actor);
     }
     return create(ReleaseStaleTasksResponseSchema, {
       released: result.released.map(toTask),
@@ -398,7 +398,7 @@ export const taskServiceImpl: ServiceImpl<typeof TaskService> = {
       await requireProject(projectId);
     }
     const limit = Math.min(Math.max(req.limit || 30, 1), 200);
-    const rows = listActivityRows(projectId || undefined, limit);
+    const rows = await listActivityRows(projectId || undefined, limit);
     const activities: Activity[] = rows.map((row) =>
       create(ActivitySchema, {
         id: row.id,

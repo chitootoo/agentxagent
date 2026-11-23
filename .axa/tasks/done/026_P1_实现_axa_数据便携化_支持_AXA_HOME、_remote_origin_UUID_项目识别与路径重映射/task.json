@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "id": "026",
+  "title": "实现 axa 数据便携化：支持 AXA_HOME、 remote origin/UUID 项目识别与路径重映射",
+  "priority": "P1",
+  "status": "done",
+  "reviewRequired": false,
+  "createdAt": "2026-11-22T06:09:42.563Z",
+  "updatedAt": "2026-11-22T06:37:01.090Z",
+  "tags": [],
+  "extra": {
+    "created_by": "secretary",
+    "updated_by": "trae_26-11-22_14:10:36.598",
+    "completed_at": "2026-11-22T06:37:01.090Z",
+    "completed_by": "trae_26-11-22_14:10:36.598"
+  }
+}

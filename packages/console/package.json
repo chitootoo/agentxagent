@@ -2,7 +2,7 @@
   "name": "@contagxt/axa-console",
   "version": "0.1.0",
   "private": true,
-  "description": "Mobile IM-style web console for axa multi-agent tasks",
+  "description": "Mobile IM-style web console for Boss, secretary and worker tasks",
   "license": "MIT",
   "type": "module",
   "scripts": {
@@ -15,11 +15,12 @@
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
-    "@contagxt/axa-core": "workspace:*",
-    "@contagxt/axa-proto": "workspace:*",
     "@bufbuild/protobuf": "^2.16.0",
     "@connectrpc/connect": "^2.3.0",
     "@connectrpc/connect-web": "^2.3.0",
+    "@contagxt/axa-core": "workspace:*",
+    "@contagxt/axa-proto": "workspace:*",
+    "@contagxt/axa-secretary": "workspace:*",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.4",
     "next": "^16.4.5",

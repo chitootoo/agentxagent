@@ -13,13 +13,16 @@ import {
   SKILL_FILE,
   TASKS_README_FILE,
 } from "./paths.js";
+import { isPortableProjectId, resolveProjectIdentity } from "./project-id.js";
 import { initProject } from "./tasks.js";
 import type { AxaConfig, ListProjectsResult, ProjectConfig } from "./types.js";
 
 const CONFIG_VERSION = 1;
 
 export function getAxaHome(): string {
-  return process.env.AXA_HOME ? resolve(process.env.AXA_HOME) : join(homedir(), ".axa");
+  return process.env.AXA_HOME
+    ? resolve(expandHomePath(process.env.AXA_HOME))
+    : join(homedir(), ".axa");
 }
 
 export function getConfigPath(): string {
@@ -68,6 +71,46 @@ function validateConfig(value: unknown): AxaConfig {
   };
 }
 
+/**
+ * #026 replaced name-based ids with portable project ids, but entries written
+ * by older versions keep their old id until the project is visited. Upgrade
+ * those entries as soon as the registry is loaded so every consumer (CLI,
+ * console, secretary) sees a consistent id. Missing projects are left intact
+ * rather than dropped, so no stored data is lost.
+ */
+async function upgradeLegacyProjectIds(config: AxaConfig): Promise<boolean> {
+  let changed = false;
+  for (const project of config.projects) {
+    if (isPortableProjectId(project.id)) continue;
+
+    let upgraded: string;
+    if (project.id.startsWith("git:")) {
+      // The old prefix carries no extra information: strip it in place so the
+      // migration works even when the project directory is gone.
+      upgraded = project.id.slice("git:".length);
+    } else {
+      if (!(await isAxaProject(project.path))) continue;
+      try {
+        const identity = await resolveProjectIdentity(project.path);
+        upgraded = identity.id;
+      } catch {
+        // Keep the original entry if its project cannot be resolved.
+        continue;
+      }
+    }
+
+    if (upgraded === project.id) continue;
+    if (config.projects.some((other) => other !== project && other.id === upgraded)) continue;
+    const previousId = project.id;
+    project.id = upgraded;
+    if (config.defaultProjectId === previousId) {
+      config.defaultProjectId = upgraded;
+    }
+    changed = true;
+  }
+  return changed;
+}
+
 export async function readConfig(): Promise<AxaConfig> {
   let content: string;
   try {
@@ -80,7 +123,11 @@ export async function readConfig(): Promise<AxaConfig> {
   }
 
   try {
-    return validateConfig(JSON.parse(content));
+    const config = validateConfig(JSON.parse(content));
+    if (await upgradeLegacyProjectIds(config)) {
+      await writeConfig(config);
+    }
+    return config;
   } catch (error) {
     if (error instanceof AxaError) throw error;
     throw new AxaError("CONFIG_ERROR", `Cannot parse ${getConfigPath()}.`, { cause: error });
@@ -98,24 +145,6 @@ async function mutateConfig<T>(mutator: (config: AxaConfig) => Promise<T> | T): 
     await writeConfig(config);
     return result;
   });
-}
-
-function projectIdBase(name: string): string {
-  const normalized = name
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return normalized || "project";
-}
-
-function uniqueId(base: string, projects: ProjectConfig[]): string {
-  const existing = new Set(projects.map((project) => project.id));
-  if (!existing.has(base)) return base;
-  let index = 2;
-  while (existing.has(`${base}-${index}`)) index += 1;
-  return `${base}-${index}`;
 }
 
 async function canonicalProjectPath(input: string): Promise<string> {
@@ -149,22 +178,85 @@ export async function registerProject(input: RegisterProjectInput): Promise<Proj
   }
   projectPath = await canonicalProjectPath(projectPath);
   const name = input.name?.trim() || basename(projectPath);
+  const identity = await resolveProjectIdentity(projectPath);
 
   return mutateConfig((config) => {
-    const existing = config.projects.find((project) => resolve(project.path) === projectPath);
+    const existing = findProjectEntry(config, identity.id, identity.previousId, projectPath);
     if (existing) {
+      applyProjectIdentity(config, existing, identity.id, projectPath);
       existing.name = name;
       return existing;
     }
 
     const project: ProjectConfig = {
-      id: uniqueId(projectIdBase(name), config.projects),
+      id: identity.id,
       name,
       path: projectPath,
       addedAt: new Date().toISOString(),
     };
     config.projects.push(project);
     config.defaultProjectId ??= project.id;
+    return project;
+  });
+}
+
+function findProjectEntry(
+  config: AxaConfig,
+  projectId: string,
+  previousId: string | undefined,
+  projectPath: string,
+): ProjectConfig | undefined {
+  return (
+    config.projects.find((project) => project.id === projectId) ??
+    (previousId ? config.projects.find((project) => project.id === previousId) : undefined) ??
+    config.projects.find((project) => resolve(project.path) === projectPath)
+  );
+}
+
+/** Move a registry entry to the current id/path and keep the default pointer valid. */
+function applyProjectIdentity(
+  config: AxaConfig,
+  project: ProjectConfig,
+  projectId: string,
+  projectPath: string,
+): void {
+  const previousId = project.id;
+  project.id = projectId;
+  project.path = projectPath;
+  if (config.defaultProjectId === previousId) {
+    config.defaultProjectId = projectId;
+  }
+  // A portable id identifies exactly one project, so drop stale duplicates.
+  config.projects = config.projects.filter(
+    (candidate) => candidate === project || candidate.id !== projectId,
+  );
+}
+
+/**
+ * Re-map a registered project to its current physical path and identity.
+ *
+ * Called when a command runs inside a project, so moving a project directory or
+ * adding a git remote upgrades the global registry without user intervention.
+ * Unknown (unregistered) projects are left untouched.
+ */
+export async function syncRegisteredProjectPath(
+  projectRoot: string,
+): Promise<ProjectConfig | undefined> {
+  if (!(await isAxaProject(projectRoot))) return undefined;
+  const projectPath = await canonicalProjectPath(projectRoot);
+  const identity = await resolveProjectIdentity(projectPath);
+
+  const config = await readConfig();
+  const current = findProjectEntry(config, identity.id, identity.previousId, projectPath);
+  if (!current) return undefined;
+  if (current.id === identity.id && current.path === projectPath) {
+    return current;
+  }
+
+  return mutateConfig((draft) => {
+    const project = findProjectEntry(draft, identity.id, identity.previousId, projectPath);
+    if (!project) return undefined;
+    applyProjectIdentity(draft, project, identity.id, projectPath);
     return project;
   });
 }
@@ -252,15 +344,19 @@ export async function resolveCliProject(input?: string): Promise<string> {
   if (input) {
     const direct = resolve(expandHomePath(input));
     if (await isAxaProject(direct)) {
+      await syncRegisteredProjectPath(direct);
       return direct;
     }
     if (basename(direct) === ".axa" && (await pathExists(direct))) {
-      return resolve(direct, "..");
+      const root = resolve(direct, "..");
+      await syncRegisteredProjectPath(root);
+      return root;
     }
     try {
       const project = await getRegisteredProject(input);
       if (await isAxaProject(project.path)) {
-        return project.path;
+        const synced = await syncRegisteredProjectPath(project.path);
+        return synced?.path ?? project.path;
       }
       throw new AxaError(
         "INVALID_PROJECT",
@@ -278,14 +374,18 @@ export async function resolveCliProject(input?: string): Promise<string> {
   }
 
   const local = await findProjectRoot(process.cwd());
-  if (local) return local;
+  if (local) {
+    await syncRegisteredProjectPath(local);
+    return local;
+  }
 
   const config = await readConfig();
   const defaultId = config.defaultProjectId;
   if (defaultId) {
     const project = config.projects.find((candidate) => candidate.id === defaultId);
     if (project && (await isAxaProject(project.path))) {
-      return project.path;
+      const synced = await syncRegisteredProjectPath(project.path);
+      return synced?.path ?? project.path;
     }
   }
 
