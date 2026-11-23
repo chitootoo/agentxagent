@@ -1,8 +1,19 @@
 import type { Task } from "@contagxt/axa-proto";
+import { taskExecution } from "../prompts/index";
+
+function render(template: string, params: Record<string, string>): string {
+  return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/gu, (match, key: string) =>
+    key in params ? (params[key] as string) : match,
+  );
+}
 
 export function taskExecutionPrompt(task: Pick<Task, "id" | "title">, projectPath: string): string {
   const root = projectPath.replace(/\/+$/u, "");
-  return `在项目 ${root} 下阅读 .axa/SKILL.md，执行任务 #${task.id}「${task.title}」。`;
+  return render(taskExecution, {
+    project_path: root,
+    task_id: task.id,
+    task_title: task.title,
+  }).trim();
 }
 
 export async function copyText(text: string): Promise<void> {

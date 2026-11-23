@@ -10,9 +10,10 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "pnpm build:packages && pnpm --filter @contagxt/axa-console build",
+    "build": "pnpm prompts:generate && pnpm build:packages && pnpm --filter @contagxt/axa-console build",
     "build:packages": "pnpm --filter @contagxt/axa-proto build && pnpm --filter @contagxt/axa-core build && pnpm --filter @contagxt/axa-secretary build && pnpm --filter @contagxt/axa-cli build",
-    "dev": "pnpm build:packages && pnpm --filter @contagxt/axa-console dev",
+    "dev": "pnpm prompts:generate && pnpm build:packages && pnpm --filter @contagxt/axa-console dev",
+    "prompts:generate": "node scripts/gen-prompts.mjs",
     "dev:console": "pnpm --filter @contagxt/axa-console dev",
     "axa": "tsx packages/cli/src/index.ts",
     "lint": "biome check .",

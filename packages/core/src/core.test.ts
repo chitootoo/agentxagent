@@ -35,6 +35,8 @@ import {
   releaseStaleTasks,
   releaseTask,
   removeRegisteredProject,
+  renderPrompt,
+  renderTaskCompletedNote,
   resolveCliProject,
   resolveProjectIdentity,
   scanTasks,
@@ -1047,5 +1049,25 @@ describe("activity log", () => {
     await writeFile(path, `${await readFile(path, "utf8")}not json\n`, "utf8");
     expect(await getActivityLogSize()).toBeGreaterThan(before);
     expect(await readActivityEntries()).toHaveLength(1);
+  });
+});
+
+describe("prompt templates", () => {
+  it("renders named placeholders and leaves unknown ones visible", () => {
+    expect(renderPrompt("任务 {{task_id}} 已完成，{{missing}}", { task_id: "031" })).toBe(
+      "任务 031 已完成，{{missing}}",
+    );
+  });
+
+  it("renders the shared task-completed note from the md template", () => {
+    const note = renderTaskCompletedNote({
+      taskId: "031",
+      taskTitle: "优化 prompt",
+      taskStatus: "done",
+      projectId: "github.com/acme/demo",
+    });
+    expect(note).toContain("任务 031「优化 prompt」已完成（状态：done）");
+    expect(note).toContain("`github.com/acme/demo`");
+    expect(note).not.toContain("{{");
   });
 });

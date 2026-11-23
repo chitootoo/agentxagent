@@ -69,6 +69,7 @@ export {
   resolveProjectIdentity,
   writeProjectLocalConfig,
 } from "./project-id.js";
+export { type PromptParams, renderPrompt, renderTaskCompletedNote, savePrompt } from "./prompt.js";
 export {
   ARCHIVE_AFTER_MS,
   acceptTask,

@@ -37,6 +37,7 @@ import {
   statusDir,
   tasksReadmePath,
 } from "./paths.js";
+import { renderTaskCompletedNote } from "./prompt.js";
 import type {
   AppendTaskMessageInput,
   ClaimTaskInput,
@@ -747,14 +748,13 @@ export async function initProject(options: InitProjectOptions): Promise<ProjectI
   const { mkdir } = await import("node:fs/promises");
   await mkdir(join(projectRoot, ".axa"), { recursive: true });
   await ensureTaskDirs(projectRoot);
-  const name = options.name ?? basename(projectRoot);
   const skill = skillPath(projectRoot);
   if (!(await pathExists(skill))) {
-    await writeFileAtomic(skill, defaultInstruction(name));
+    await writeFileAtomic(skill, await defaultInstruction());
   }
   const readme = tasksReadmePath(projectRoot);
   if (!(await pathExists(readme))) {
-    await writeFileAtomic(readme, defaultTasksReadme());
+    await writeFileAtomic(readme, await defaultTasksReadme());
   }
   return readProjectInfo(projectRoot);
 }
@@ -1151,11 +1151,12 @@ async function notifyTaskCompleted(projectRoot: string, task: Task, actor: strin
     projectId: project?.id ?? projectRoot,
     taskId: task.id,
     key: `${task.id}:${lastSeq}:${task.status}`,
-    body: [
-      `任务 ${task.id}「${task.title}」已完成（状态：${task.status}）。`,
-      ``,
-      `请查看项目 \`${project?.id ?? projectRoot}\` 下该任务的目录与会话，核对完成情况并向 Boss 汇报。`,
-    ].join("\n"),
+    body: renderTaskCompletedNote({
+      taskId: task.id,
+      taskTitle: task.title,
+      taskStatus: task.status,
+      projectId: project?.id ?? projectRoot,
+    }),
   });
 }
 

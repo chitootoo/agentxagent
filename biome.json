@@ -13,6 +13,7 @@
       "!**/dist",
       "!**/coverage",
       "!packages/proto/src/gen",
+      "!**/src/prompts/index.ts",
       "!**/next-env.d.ts"
     ]
   },

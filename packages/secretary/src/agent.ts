@@ -9,6 +9,9 @@ import {
   listInboxNotes,
   listRegisteredProjects,
   moveInboxNote,
+  renderPrompt,
+  renderTaskCompletedNote,
+  savePrompt,
   scanTasks,
   type Task,
   type TaskPriority,
@@ -18,6 +21,14 @@ import { Agent, type AgentTool, type StreamFn } from "@earendil-works/pi-agent-c
 import type { Api, Model, SimpleStreamOptions, TextContent } from "@earendil-works/pi-ai";
 import { googleGenerativeAIApi } from "@earendil-works/pi-ai/api/google-generative-ai.lazy";
 import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
+import {
+  chatWithHistory,
+  inboxNote,
+  projectLine,
+  projectSectionEmpty,
+  projectSectionList,
+  system,
+} from "./prompts/index.js";
 import {
   mutateChat,
   newMessageId,
@@ -163,36 +174,24 @@ function formatHistory(messages: SecretaryChatMessage[]): string {
     .join("\n\n");
 }
 
-function projectLine(project: ListProjectsResult): string {
-  return `- ${project.name}（id: ${project.id}，路径 ${project.path}）`;
-}
-
 function systemPrompt(projects: ListProjectsResult[]): string {
   const projectSection =
     projects.length === 0
-      ? "当前还没有纳管任何项目。需要落到某个项目的工程任务时，提醒 Boss 先去「项目」页添加项目；通用问题仍然可以直接回答。"
-      : `你管理以下全部已纳管项目（不绑定某一个项目，根据上下文判断 Boss 指的是哪个）：\n${projects
-          .map(projectLine)
-          .join("\n")}`;
-  return `你是 axa 的 secretary（秘书），是 Boss（人类）与 worker（执行 Agent）之间的唯一入口，管理 Boss 的所有项目和任务。
-
-三种角色：
-- Boss：人类，向你提出需求、验收结果。
-- secretary：你，理解 Boss 的意图、处理简单事务、把耗时任务交给 worker，并汇总反馈。
-- worker：通过 axa 认领任务并执行代码/工程工作的 Agent。
-
-${projectSection}
-
-工作方式：
-1. 先根据对话上下文和历史消息判断 Boss 说的是哪个项目；能确定就直接使用，不要反问。确实无法判断且必须落到具体项目时，列出候选项目询问 Boss。
-2. 简单问题（解释、建议、查询、闲聊、状态汇总）直接回答，不创建任务。
-3. 需要改代码、跑测试、跨多轮执行的耗时工作，调用 create_task 创建 axa 任务，project 参数填项目名称或 id。创建成功后立刻告诉 Boss 任务编号和所属项目，不要假装已经完成。
-4. 可以用 list_projects / list_tasks / get_task 查看项目和任务；worker 完成后系统会通知你，你再向 Boss 汇总。
-5. 不要自己认领任务，不要声称代替 worker 完成了工程改动。
-6. 每次回复的最后一行必须明确写出本次的处理方式，二选一：
-   - 本次由我直接处理。
-   - 已创建任务 #编号（项目名），由 worker 执行。
-7. 用中文回复，简洁直接；必要时使用 Markdown。`;
+      ? projectSectionEmpty.trim()
+      : renderPrompt(projectSectionList, {
+          project_lines: projects
+            .map((project) =>
+              renderPrompt(projectLine, {
+                project_name: project.name,
+                project_id: project.id,
+                project_path: project.path,
+              }),
+            )
+            .join("\n"),
+        }).trim();
+  const rendered = renderPrompt(system, { project_section: projectSection }).trim();
+  void savePrompt("secretary", "system", rendered);
+  return rendered;
 }
 
 function normalizePriority(value: unknown): TaskPriority {
@@ -521,8 +520,9 @@ async function processPending(): Promise<void> {
       state.messages.filter((message) => message.id !== placeholder.id),
     );
     const prompt = history
-      ? `以下是最近的对话：\n\n${history}\n\nBoss 最新消息：\n${bossMessage.body}`
+      ? renderPrompt(chatWithHistory, { history, boss_message: bossMessage.body }).trim()
       : bossMessage.body;
+    void savePrompt("secretary", "chat", prompt);
 
     const projects = await listRegisteredProjects().catch(() => []);
     const result = await runSecretary(settings, projects, prompt);
@@ -599,14 +599,8 @@ export async function sendBossMessage(input: SendBossMessageInput): Promise<Secr
  */
 async function processInboxNote(note: InboxNote, settings: SecretarySettings): Promise<void> {
   const projects = await listRegisteredProjects().catch(() => []);
-  const prompt = [
-    "秘书收件箱收到一条任务通知，请核实后向 Boss 汇报：",
-    "",
-    note.body,
-    "",
-    "请用 list_tasks / get_task 等工具查看该任务的目录与会话，确认实际完成情况，",
-    "然后简洁地汇报给 Boss。如果任务尚未真正完成或信息矛盾，请如实说明。",
-  ].join("\n");
+  const prompt = renderPrompt(inboxNote, { note_body: note.body.trim() }).trim();
+  void savePrompt("secretary", `inbox-${note.taskId}`, prompt);
   const result = await runSecretary(settings, projects, prompt);
   await mutateChat((current) => {
     current.messages.push({
@@ -661,7 +655,12 @@ export async function reconcileInbox(): Promise<void> {
         projectId: project.id,
         taskId: task.id,
         key,
-        body: `任务 ${task.id}「${task.title}」已完成（状态：${task.status}）。\n\n请查看项目 \`${project.id}\` 下该任务的目录与会话，核对完成情况并向 Boss 汇报。`,
+        body: renderTaskCompletedNote({
+          taskId: task.id,
+          taskTitle: task.title,
+          taskStatus: task.status,
+          projectId: project.id,
+        }),
       }).catch(() => undefined);
     }
   }
