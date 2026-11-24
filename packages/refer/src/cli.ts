@@ -84,7 +84,7 @@ Global options:
 
 Environment:
   REFER_REPOS_ROOT      Shared checkout cache
-                        (default: \${XDG_DATA_HOME:-~/.local/share}/refer/repos)
+                        (default: ~/.contagxt/repos)
   REFER_VERBOSE=1       Same as -v
 
 Examples:

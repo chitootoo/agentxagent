@@ -7,6 +7,7 @@ import {
   rmSync,
   statSync,
   symlinkSync,
+  unlinkSync,
 } from "node:fs";
 import { basename, dirname } from "node:path";
 import { die, usageError } from "./errors.js";
@@ -116,7 +117,7 @@ export function makeLink(link: string, target: string, session: Session): void {
       gitignoreAdd(link, session);
       return;
     }
-    rmSync(link, { force: true });
+    unlinkSync(link);
   } else if (lexists(link)) {
     if (!session.force) {
       die(`'${link}' already exists and is not a symlink; move it away or re-run with --force`);

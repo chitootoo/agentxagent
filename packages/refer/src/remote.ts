@@ -67,8 +67,7 @@ export function isCommitSha(value: string): boolean {
 
 export function reposRoot(env: NodeJS.ProcessEnv): string {
   if (env.REFER_REPOS_ROOT) return env.REFER_REPOS_ROOT;
-  if (env.XDG_DATA_HOME) return `${env.XDG_DATA_HOME}/refer/repos`;
-  return `${env.HOME ?? ""}/.local/share/refer/repos`;
+  return `${env.HOME ?? ""}/.contagxt/repos`;
 }
 
 // Shared cache location for a URL: $REFER_REPOS_ROOT/<host>/<path>.

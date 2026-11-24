@@ -9,6 +9,7 @@ import {
   realpathSync,
   rmSync,
   symlinkSync,
+  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -132,7 +133,6 @@ beforeEach(() => {
     GIT_CONFIG_NOSYSTEM: "1",
     GIT_CONFIG_GLOBAL: join(home, ".gitconfig"),
   };
-  delete env.XDG_DATA_HOME;
   delete env.REFER_VERBOSE;
 
   writeFileSync(
@@ -830,7 +830,7 @@ describe("list", () => {
     mkdirSync("other");
     expect(refer(["get", "-l", "./source", "-s", "./link"]).code).toBe(0);
 
-    rmSync("link");
+    unlinkSync("link");
     expect(output(refer(["list"]).captured)).toContain("symlink: link -> ");
     expect(output(refer(["list"]).captured)).toContain("(missing)");
 
@@ -845,7 +845,7 @@ describe("list", () => {
     expect(text).toContain("symlink: auto2 -> ");
     expect(text).toContain("(ok)");
 
-    rmSync("auto2");
+    unlinkSync("auto2");
     expect(output(refer(["list"]).captured)).toContain("symlink: :auto (missing)");
   });
 

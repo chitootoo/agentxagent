@@ -1,4 +1,4 @@
-import { type Dirent, existsSync, readdirSync, readlinkSync, rmSync } from "node:fs";
+import { type Dirent, existsSync, readdirSync, readlinkSync, rmSync, unlinkSync } from "node:fs";
 import { basename, dirname } from "node:path";
 import { die, ReferError, usageError } from "./errors.js";
 import { checkoutDisposable, ensureCheckout } from "./git.js";
@@ -209,7 +209,7 @@ export function replayAll(recursive: boolean, updateOverride: boolean, session: 
 
 function removeLink(link: string, session: Session): void {
   if (isSymlink(link)) {
-    rmSync(link, { force: true });
+    unlinkSync(link);
     session.reporter.log(`Removed symlink ${link}`);
   } else if (lexists(link)) {
     session.reporter.warn(`'${link}' is not a symlink; left in place`);

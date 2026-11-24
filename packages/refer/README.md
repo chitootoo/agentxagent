@@ -5,10 +5,10 @@
 ```console
 $ refer get -r https://github.com/anthropics/skills.git/skills/skill-creator -g \
             -s .agents/skills/skill-creator -s .claude/skills/skill-creator
-Cloning https://github.com/anthropics/skills.git into ~/.local/share/refer/repos/github.com/anthropics/skills
-Linked .agents/skills/skill-creator -> ~/.local/share/refer/repos/github.com/anthropics/skills/skills/skill-creator
+Cloning https://github.com/anthropics/skills.git into ~/.contagxt/repos/github.com/anthropics/skills
+Linked .agents/skills/skill-creator -> ~/.contagxt/repos/github.com/anthropics/skills/skills/skill-creator
 Added /skill-creator to .agents/skills/.gitignore
-Linked .claude/skills/skill-creator -> ~/.local/share/refer/repos/github.com/anthropics/skills/skills/skill-creator
+Linked .claude/skills/skill-creator -> ~/.contagxt/repos/github.com/anthropics/skills/skills/skill-creator
 Added /skill-creator to .claude/skills/.gitignore
 Wrote ./skill-creator.ref
 ```
@@ -144,7 +144,7 @@ Details that keep this predictable:
 
 | Environment variable | Default | Purpose |
 | --- | --- | --- |
-| `REFER_REPOS_ROOT` | `${XDG_DATA_HOME:-~/.local/share}/refer/repos` | Shared checkout cache |
+| `REFER_REPOS_ROOT` | `~/.contagxt/repos` | Shared checkout cache |
 | `REFER_VERBOSE` | `0` | `1` prints debug output, same as `-v` |
 
 ### Security note
