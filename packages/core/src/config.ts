@@ -19,10 +19,14 @@ import type { AxaConfig, ListProjectsResult, ProjectConfig } from "./types.js";
 
 const CONFIG_VERSION = 1;
 
+/** Every "@contagxt" package keeps its data under one hidden home directory. */
+const CONTAGXT_DIR = ".contagxt";
+const AXA_DIR_NAME = "axa";
+
 export function getAxaHome(): string {
   return process.env.AXA_HOME
     ? resolve(expandHomePath(process.env.AXA_HOME))
-    : join(homedir(), ".axa");
+    : join(homedir(), CONTAGXT_DIR, AXA_DIR_NAME);
 }
 
 export function getConfigPath(): string {

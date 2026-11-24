@@ -88,7 +88,10 @@ export function SecretarySettingsView() {
       <div className="page-heading split">
         <div>
           <h1>秘书设置</h1>
-          <p>秘书通过 OpenAI 兼容接口或 Gemini 原生接口调用模型。配置只保存在本机 ~/.axa 下。</p>
+          <p>
+            秘书通过 OpenAI 兼容接口或 Gemini 原生接口调用模型。配置只保存在本机 ~/.contagxt/axa
+            下。
+          </p>
         </div>
         <Link className="button ghost" href="/">
           <ArrowLeftIcon size={16} />
@@ -173,7 +176,7 @@ export function SecretarySettingsView() {
               value={apiKey}
             />
             <small>
-              Key 以明文保存在本机 ~/.axa/secretary/secretary.json，不会上传到远程服务。
+              Key 以明文保存在本机 ~/.contagxt/axa/secretary/secretary.json，不会上传到远程服务。
             </small>
           </label>
 

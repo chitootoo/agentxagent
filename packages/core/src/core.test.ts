@@ -16,6 +16,7 @@ import {
   enqueueInboxNote,
   getActivityLogPath,
   getActivityLogSize,
+  getAxaHome,
   getTask,
   hasInboxNote,
   initProject,
@@ -745,6 +746,15 @@ describe("project registry", () => {
     expect(toAbsolutePath("~")).toBe(homedir());
     expect(toAbsolutePath("~/demo")).toBe(join(homedir(), "demo"));
     expect(toAbsolutePath("  ~/demo  ")).toBe(join(homedir(), "demo"));
+  });
+
+  it("stores axa data under ~/.contagxt/axa by default", () => {
+    delete process.env.AXA_HOME;
+    try {
+      expect(getAxaHome()).toBe(join(homedir(), ".contagxt", "axa"));
+    } finally {
+      process.env.AXA_HOME = axaHome;
+    }
   });
 });
 

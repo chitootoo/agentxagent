@@ -49,7 +49,7 @@ pnpm dev
 | 模型       | `gpt-4.1`、`deepseek-chat`                                 |
 | API Key  | 你的密钥                                                      |
 
-设置保存在本机 `~/.axa/secretary/secretary.json`。对话记录保存在 `~/.axa/secretary/secretary-chat.json`。配置完成后，Boss 可以直接问项目状态、拆任务；秘书会把耗时工作写成 `todo` 任务交给 worker，并在 worker 完成后自动汇总。
+设置保存在本机 `~/.contagxt/axa/secretary/secretary.json`。对话记录保存在 `~/.contagxt/axa/secretary/secretary-chat.json`。配置完成后，Boss 可以直接问项目状态、拆任务；秘书会把耗时工作写成 `todo` 任务交给 worker，并在 worker 完成后自动汇总。
 
 秘书自身通过 [`@earendil-works/pi-agent-core`](https://github.com/earendil-works/pi/tree/main/packages/agent) 运行，工具只有 `create_task`、`list_tasks`、`get_task`，不会直接修改源码。
 
@@ -69,7 +69,7 @@ pnpm dev
 
 控制台代表 Boss 身份：首屏是 Boss 与秘书的聊天窗口；「任务」页负责审批、验收、追加需求和释放超时任务。任务详情底部固定输入框，上方根据状态显示“批准任务 / 复制执行指令 / 提交验收 / 验收通过 / 释放”等操作；低频操作（编辑、删除、复制指令、刷新）收在右上角菜单。任务元信息默认折叠，点击顶部摘要展开。
 
-前端通过 Connect Web transport 调用 `/api`，服务端直接复用 `@contagxt/axa-core`，因此控制台与 CLI 的行为完全一致。活动日志位于 `~/.axa/console.db`（可用 `AXA_CONSOLE_DB` 覆盖），只用于审计展示，不参与任务状态判定。
+前端通过 Connect Web transport 调用 `/api`，服务端直接复用 `@contagxt/axa-core`，因此控制台与 CLI 的行为完全一致。活动日志（真相源）位于 `~/.contagxt/axa/activity.jsonl`；控制台只把它同步到系统临时目录下的 SQLite 缓存（可用 `AXA_CONSOLE_DB` 覆盖），缓存可随时重建，不参与任务状态判定。
 
 移动端特性：
 
@@ -111,8 +111,8 @@ macOS / iOS Safari 可“分享 → 添加到主屏幕”，Android Chrome 可�
 
 | 变量                | 默认值                               | 作用                  |
 | ----------------- | --------------------------------- | ------------------- |
-| `AXA_HOME`        | `~/.axa`                          | 项目注册表与默认数据库目录       |
-| `AXA_CONSOLE_DB`  | `~/.axa/console.db`               | 控制台活动日志路径           |
+| `AXA_HOME`        | `~/.contagxt/axa`                 | 项目注册表、活动日志与秘书数据目录    |
+| `AXA_CONSOLE_DB`  | 系统临时目录 `axa-console/<hash>/console.db` | 控制台活动日志 SQLite 缓存   |
 | `AXA_DEV_ORIGINS` | `**.ts.net, localhost, 127.0.0.1` | 控制台开发模式允许的跨域来源，逗号分隔 |
 
 ## 仓库结构
