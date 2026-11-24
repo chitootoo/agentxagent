@@ -1,0 +1,49 @@
+{
+  "name": "@contagxt/refer",
+  "version": "0.1.0",
+  "description": "Reference external git repos, repo subdirectories, or local directories through tiny .ref manifests",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "refer": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chitootoo/agentxagent.git",
+    "directory": "packages/refer"
+  },
+  "homepage": "https://github.com/chitootoo/agentxagent/tree/main/packages/refer",
+  "bugs": {
+    "url": "https://github.com/chitootoo/agentxagent/issues"
+  },
+  "keywords": [
+    "git",
+    "symlink",
+    "monorepo",
+    "vendoring",
+    "skills",
+    "cli"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsup && chmod +x dist/index.js",
+    "dev": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsup": "^8.5.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0"
+  }
+}

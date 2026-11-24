@@ -19,6 +19,12 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      PACKAGES: |
+        proto:@contagxt/axa-proto
+        core:@contagxt/axa-core
+        cli:@contagxt/axa-cli
+        refer:@contagxt/refer
     steps:
       - uses: actions/checkout@v4
 
@@ -42,16 +48,20 @@ jobs:
       - name: Pack workspaces
         run: |
           mkdir -p "$RUNNER_TEMP/packs"
-          for dir in proto core cli; do
-            pnpm --filter "@contagxt/axa-$dir" pack --pack-destination "$RUNNER_TEMP/packs"
-          done
+          while IFS=: read -r _ pkg; do
+            [ -n "$pkg" ] || continue
+            pnpm --filter "$pkg" pack --pack-destination "$RUNNER_TEMP/packs"
+          done <<< "$PACKAGES"
 
       - name: Publish with OIDC
         env:
           NPM_TAG: ${{ inputs.tag }}
         run: |
-          for dir in proto core cli; do
+          while IFS=: read -r dir pkg; do
+            [ -n "$pkg" ] || continue
             version=$(node -p "require('./packages/$dir/package.json').version")
-            npm publish "$RUNNER_TEMP/packs/contagxt-axa-$dir-$version.tgz" \
+            name=${pkg#@}
+            name=${name//\//-}
+            npm publish "$RUNNER_TEMP/packs/$name-$version.tgz" \
               --access public --provenance --tag "$NPM_TAG"
-          done
+          done <<< "$PACKAGES"
