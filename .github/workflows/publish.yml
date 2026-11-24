@@ -56,6 +56,7 @@ jobs:
       - name: Publish with OIDC
         env:
           NPM_TAG: ${{ inputs.tag }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           while IFS=: read -r dir pkg; do
             [ -n "$pkg" ] || continue
