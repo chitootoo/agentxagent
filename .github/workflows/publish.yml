@@ -62,6 +62,10 @@ jobs:
             version=$(node -p "require('./packages/$dir/package.json').version")
             name=${pkg#@}
             name=${name//\//-}
+            if npm view "$pkg@$version" version >/dev/null 2>&1; then
+              echo "Skipping $pkg@$version (already published)"
+              continue
+            fi
             npm publish "$RUNNER_TEMP/packs/$name-$version.tgz" \
               --access public --provenance --tag "$NPM_TAG"
           done <<< "$PACKAGES"
