@@ -1,6 +1,6 @@
 {
   "name": "@contagxt/refer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Reference external git repos, repo subdirectories, or local directories through tiny .ref manifests",
   "license": "MIT",
   "type": "module",

@@ -3,7 +3,7 @@ import { die } from "./errors.js";
 import type { Session } from "./io.js";
 import { homeDir, refPath } from "./paths.js";
 
-export const VERSION = "0.1.0";
+export const VERSION = "0.1.1";
 export const HOMEPAGE = "https://github.com/chitootoo/agentxagent/tree/main/packages/refer";
 
 export interface RefManifest {
