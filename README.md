@@ -49,7 +49,7 @@ pnpm dev
 | 模型       | `gpt-4.1`、`deepseek-chat`                                 |
 | API Key  | 你的密钥                                                      |
 
-设置保存在本机 `~/.axa/secretary.json`。对话记录保存在 `~/.axa/secretary-chat.json`。配置完成后，Boss 可以直接问项目状态、拆任务；秘书会把耗时工作写成 `todo` 任务交给 worker，并在 worker 完成后自动汇总。
+设置保存在本机 `~/.axa/secretary/secretary.json`。对话记录保存在 `~/.axa/secretary/secretary-chat.json`。配置完成后，Boss 可以直接问项目状态、拆任务；秘书会把耗时工作写成 `todo` 任务交给 worker，并在 worker 完成后自动汇总。
 
 秘书自身通过 [`@earendil-works/pi-agent-core`](https://github.com/earendil-works/pi/tree/main/packages/agent) 运行，工具只有 `create_task`、`list_tasks`、`get_task`，不会直接修改源码。
 

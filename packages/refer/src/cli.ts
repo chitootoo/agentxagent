@@ -1,11 +1,11 @@
 import { basename } from "node:path";
 import { die, ReferError, usageError } from "./errors.js";
-import { gitAvailable } from "./git.js";
+import { gitAvailable, gitOrigin } from "./git.js";
 import { createReporter, type Reporter, type Session } from "./io.js";
 import { HOMEPAGE, readRef, VERSION, writeRef } from "./manifest.js";
 import { expandPath, homeDir, isFile, refPath } from "./paths.js";
 import { applyRef, cleanRef, listRefs, replayAll, replayRef, reportError } from "./reference.js";
-import { loadRemote, remoteName } from "./remote.js";
+import { isGitUrl, loadRemote, parseRemote, remoteName } from "./remote.js";
 
 export interface RunOptions {
   env?: NodeJS.ProcessEnv;
@@ -40,7 +40,8 @@ Usage:
   refer help | version
 
 With no file arguments, 'get' restores every .ref in this directory. Add -R
-to include subdirectories.
+to include subdirectories. Without -r, a local path inside a git work tree is
+recorded with that repository's origin and sub path, so it restores elsewhere.
 
 Commands:
   get        Clone/link a reference and write <name>.ref, or replay manifests
@@ -189,8 +190,8 @@ function parseGet(args: string[], session: Session): GetOptions {
 
 function cmdGet(args: string[], session: Session): number {
   const options = parseGet(args, session);
-  const { remote, positional } = options;
-  let { local } = options;
+  const { positional } = options;
+  let { remote, local } = options;
 
   const addInput =
     remote !== "" || local !== "" || options.symlinks.length > 0 || options.name !== "";
@@ -225,15 +226,42 @@ function cmdGet(args: string[], session: Session): number {
   }
   if (remote !== "" && local === "") local = ":auto";
 
+  // Without -r, a path inside a git work tree is recorded as a reference to
+  // that repository's origin, so the manifest restores elsewhere.
+  if (remote === "") {
+    if (local === ":auto" || local === ":global") {
+      usageError("without a remote, the local path must be an existing file or directory");
+    }
+    const source = expandPath(local, session.env);
+    const origin = gitOrigin(source, session);
+    if (origin !== undefined) {
+      const candidate = origin.subpath === "" ? origin.url : `${origin.url}/${origin.subpath}`;
+      const parsed = parseRemote(candidate);
+      if (isGitUrl(origin.url) && parsed.url === origin.url && parsed.subpath === origin.subpath) {
+        remote = candidate;
+        local = origin.root;
+        session.reporter.debug(`recording ${origin.url} (${origin.root}) for ${source}`);
+        // Keep the local-only default: a link named after the target.
+        if (options.symlinks.length === 0) {
+          const fallback = basename(source);
+          if (fallback !== "" && fallback !== "." && fallback !== "..") {
+            options.symlinks.push(fallback);
+          }
+        }
+      } else if (origin.subpath !== "") {
+        session.reporter.warn(
+          `cannot record remote '${origin.url}': the URL must end in .git to carry a sub path; writing a local-only reference`,
+        );
+      }
+    }
+  }
+
   // Work out the manifest name before touching anything.
   let manifestName = options.name;
   if (manifestName === "") {
     if (remote !== "") {
       manifestName = remoteName(loadRemote(remote, session));
     } else {
-      if (local === ":auto" || local === ":global") {
-        usageError("without a remote, the local path must be an existing file or directory");
-      }
       manifestName = basename(expandPath(local, session.env));
     }
   }

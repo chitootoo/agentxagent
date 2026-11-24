@@ -17,11 +17,11 @@ const CHAT_FILE = "secretary-chat.json";
 const queues = new Map<string, Promise<unknown>>();
 
 function settingsPath(): string {
-  return join(getAxaHome(), SETTINGS_FILE);
+  return join(getAxaHome(), "secretary", SETTINGS_FILE);
 }
 
 function chatPath(): string {
-  return join(getAxaHome(), CHAT_FILE);
+  return join(getAxaHome(), "secretary", CHAT_FILE);
 }
 
 /** Serialize read-modify-write cycles per file inside this process. */

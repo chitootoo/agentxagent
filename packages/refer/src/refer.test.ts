@@ -81,6 +81,13 @@ function remoteDir(name: string): string {
   return join(tmp, "remotes", `${name}.git`);
 }
 
+function cloneRemote(name: string): string {
+  mkdirSync(join(tmp, "src"), { recursive: true });
+  const dir = join(tmp, "src", name);
+  git(["clone", "-q", `file://${remoteDir(name)}`, dir]);
+  return realpathSync(dir);
+}
+
 function commitTo(name: string, file: string, content: string): void {
   const dir = remoteDir(name);
   writeFileSync(join(dir, file), `${content}\n`);
@@ -468,6 +475,68 @@ describe("get: local references", () => {
     expect(refer(["get", "-l", outside]).code).toBe(0);
     expectLink("workspace", outside);
     expectLine(".gitignore", "/workspace");
+  });
+
+  it("records the git origin of a path inside a work tree", () => {
+    makeRemote("mono");
+    const clone = cloneRemote("mono");
+    const url = `file://${remoteDir("mono")}`;
+
+    expect(refer(["get", "-l", join(clone, "packages/core")]).code).toBe(0);
+
+    expectLine("core.ref", `remote: ${url}/packages/core`);
+    expectLine("core.ref", `local: ${clone}`);
+    expectLink("core", join(clone, "packages/core"));
+    expectLine(".gitignore", "/core");
+  });
+
+  it("replays a recorded origin without cloning again", () => {
+    makeRemote("mono");
+    const clone = cloneRemote("mono");
+    expect(refer(["get", "-l", join(clone, "packages/core")]).code).toBe(0);
+
+    const replay = refer(["get"]);
+    expect(replay.code).toBe(0);
+    expect(output(replay.captured)).not.toContain("Cloning");
+    expectLink("core", join(clone, "packages/core"));
+  });
+
+  it("records the repository root itself", () => {
+    makeRemote("rooted");
+    const clone = cloneRemote("rooted");
+    const url = `file://${remoteDir("rooted")}`;
+
+    expect(refer(["get", "-l", clone]).code).toBe(0);
+
+    expectLine("rooted.ref", `remote: ${url}`);
+    expectLine("rooted.ref", `local: ${clone}`);
+    expectLink("rooted", clone);
+  });
+
+  it("keeps local-only references for work trees without an origin remote", () => {
+    const dir = join(tmp, "plain");
+    mkdirSync(join(dir, "sub"), { recursive: true });
+    git(["init", "-q"], dir);
+
+    expect(refer(["get", "-l", join(dir, "sub")]).code).toBe(0);
+
+    expectNoLine("sub.ref", "remote:");
+    expectLine("sub.ref", `local: ${join(dir, "sub")}`);
+    expectLink("sub", join(dir, "sub"));
+  });
+
+  it("falls back when the origin cannot carry a sub path", () => {
+    makeRemote("plainurl");
+    const clone = cloneRemote("plainurl");
+    git(["remote", "set-url", "origin", "https://example.invalid/plainurl"], clone);
+
+    const target = join(clone, "packages/core");
+    const { code, captured } = refer(["get", "-l", target]);
+    expect(code).toBe(0);
+    expect(output(captured)).toContain("must end in .git");
+    expectNoLine("core.ref", "remote:");
+    expectLine("core.ref", `local: ${target}`);
+    expectLink("core", target);
   });
 
   it("skips a link that points at the local path itself", () => {

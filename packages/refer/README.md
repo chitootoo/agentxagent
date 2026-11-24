@@ -65,6 +65,10 @@ refer get -r https://github.com/example/skills.git/skills/pdf -g \
 # Make a local directory visible inside the project
 refer get -l ~/notes -s ./notes
 
+# Link a folder of a repository that is checked out here; the manifest records
+# the repository's origin, so other machines restore it without your local copy
+refer get -l ~/src/mono/packages/ui
+
 # Restore every manifest in the current directory
 refer get
 
@@ -83,7 +87,7 @@ refer clean tools.ref
 | Option | Meaning |
 | --- | --- |
 | `-r, --remote <remote>` | Git remote as `<url>[@<branch\|tag\|sha>][/<sub/path>]`. The URL must end in `.git` when a revision or sub path follows. |
-| `-l, --local [<path>]` | With `-r`: where to clone (default `:auto` = `./<repo>`). Without `-r`: the existing local file or directory to link. |
+| `-l, --local [<path>]` | With `-r`: where to clone (default `:auto` = `./<repo>`). Without `-r`: the existing local file or directory to link. A path inside a git work tree is recorded as its origin remote plus sub path, so the manifest restores elsewhere. |
 | `-g, --global` | Keep the clone in the shared cache `$REFER_REPOS_ROOT` instead of the project. |
 | `-s, --symlink [<path>]` | Create a symlink to the reference. Repeatable. Without a value, `refer` picks a free name (`name`, `name2`, ...). |
 | `-u, --update` | Fast-forward existing checkouts. Stored in the manifest, so later restores update too. |
@@ -100,6 +104,7 @@ Run `refer get` with no file arguments to replay every manifest in the current d
 - symlinks are removed;
 - a project-local checkout is deleted, but **only if it has no uncommitted changes and no unpushed commits** (`-f` overrides);
 - shared `-g` checkouts are kept, because other links and projects may use them;
+- a manifest recorded from a local path inside a work tree names that repository root as its checkout, so `clean` deletes it only under the same uncommitted/unpushed checks (`-f` overrides);
 - the source of a local-only reference is never touched.
 
 ### `refer list`
@@ -137,6 +142,7 @@ When a manifest is replayed, `refer`:
 Details that keep this predictable:
 
 - Relative paths are resolved from the directory of the `.ref` file, so manifests work from any working directory.
+- A path given to `-l` without `-r` that lives in a git work tree is recorded with that repository's `origin` URL and its sub path, so the manifest restores on another machine instead of depending on your local copy. Repositories without an `origin` remote, or with an `origin` URL that cannot carry a sub path (it must end in `.git`), stay local-only.
 - `~`, `$VAR` and `${VAR}` are expanded from the environment, and nothing else. A `.ref` file cannot run commands, and an unset variable is an error. Paths under `$HOME` are written back as `~/...`; quote a variable (`-l '$DATA_DIR'`) to keep it literal in the manifest.
 - Replays are idempotent. Running `refer get -R` twice changes nothing.
 - `refer get -R` skips nested git repositories, so the manifests inside your dependencies are not run.

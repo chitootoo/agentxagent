@@ -1,9 +1,9 @@
 import { spawnSync } from "node:child_process";
 import { mkdirSync, readdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, relative, sep } from "node:path";
 import { die } from "./errors.js";
 import type { Session } from "./io.js";
-import { isDirectory, lexists } from "./paths.js";
+import { isDirectory, lexists, realPath } from "./paths.js";
 import { isCommitSha } from "./remote.js";
 
 interface GitResult {
@@ -24,6 +24,46 @@ export function git(args: string[], session: Session): GitResult {
 export function gitAvailable(session: Session): boolean {
   const result = spawnSync("git", ["--version"], { env: session.env, stdio: "ignore" });
   return result.status === 0;
+}
+
+export interface GitOrigin {
+  root: string;
+  url: string;
+  subpath: string;
+}
+
+// Find the git work tree that contains <path>, its "origin" remote and the
+// path of <path> inside that work tree. Undefined when <path> is not inside a
+// work tree, or the work tree has no usable origin remote.
+export function gitOrigin(path: string, session: Session): GitOrigin | undefined {
+  let resolved: string;
+  try {
+    resolved = realPath(path);
+  } catch {
+    return undefined;
+  }
+
+  const start = isDirectory(resolved) ? resolved : dirname(resolved);
+  const top = git(["-C", start, "rev-parse", "--show-toplevel"], session);
+  if (top.status !== 0) return undefined;
+
+  let root: string;
+  try {
+    root = realPath(top.stdout.trim());
+  } catch {
+    return undefined;
+  }
+
+  const remote = git(["-C", root, "remote", "get-url", "origin"], session);
+  const url = remote.stdout.trim();
+  if (remote.status !== 0 || url === "") {
+    session.reporter.debug(`${path} is not in a work tree with an origin remote`);
+    return undefined;
+  }
+
+  const within = relative(root, resolved);
+  const subpath = within === "" || within === "." ? "" : within.split(sep).join("/");
+  return { root, url, subpath };
 }
 
 function failWithGitOutput(result: GitResult, session: Session): void {

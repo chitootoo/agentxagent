@@ -172,7 +172,9 @@ export function SecretarySettingsView() {
               type="password"
               value={apiKey}
             />
-            <small>Key 以明文保存在本机 ~/.axa/secretary.json，不会上传到远程服务。</small>
+            <small>
+              Key 以明文保存在本机 ~/.axa/secretary/secretary.json，不会上传到远程服务。
+            </small>
           </label>
 
           {hasKey ? (
