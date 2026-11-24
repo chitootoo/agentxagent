@@ -17,5 +17,4 @@ coverage/
 .axa/*.db
 .axa/*.db-*
 
-# Rendered prompts (debug artifacts, generated from src/prompts/*.md)
-.prompts/
+.tmp/

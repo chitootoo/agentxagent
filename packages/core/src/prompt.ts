@@ -27,7 +27,7 @@ export function renderTaskCompletedNote(params: {
 }
 
 /**
- * Persist a fully-rendered prompt under the project's untracked `.prompts/`
+ * Persist a fully-rendered prompt under the project's untracked `.tmp/prompts/`
  * directory so prompts can be inspected and debugged after a run.
  * Set `AXA_PROMPT_ROOT` to redirect the output elsewhere (defaults to cwd).
  */
@@ -40,7 +40,7 @@ export async function savePrompt(
     const timestamp = new Date().toISOString().replace(/[:.]/gu, "-");
     const safe = (value: string) => value.replace(/[^a-zA-Z0-9._-]/gu, "_");
     const root = process.env.AXA_PROMPT_ROOT ?? process.cwd();
-    const path = join(root, ".prompts", safe(scope), `${timestamp}_${safe(name)}.md`);
+    const path = join(root, ".tmp", "prompts", safe(scope), `${timestamp}_${safe(name)}.md`);
     await mkdir(join(path, ".."), { recursive: true });
     await writeFile(path, content, "utf8");
     return path;
