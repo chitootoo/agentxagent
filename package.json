@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build": "pnpm prompts:generate && pnpm build:packages && pnpm --filter @contagxt/axa-console build",
-    "build:packages": "pnpm --filter @contagxt/axa-proto build && pnpm --filter @contagxt/axa-core build && pnpm --filter @contagxt/axa-secretary build && pnpm --filter @contagxt/axa-cli build && pnpm --filter @contagxt/refer build",
+    "build:packages": "pnpm --filter @contagxt/axa-proto build && pnpm --filter @contagxt/refer build && pnpm --filter @contagxt/axa-core build && pnpm --filter @contagxt/axa-secretary build && pnpm --filter @contagxt/axa-cli build",
     "dev": "pnpm prompts:generate && pnpm build:packages && pnpm --filter @contagxt/axa-console dev",
     "prompts:generate": "node scripts/gen-prompts.mjs",
     "dev:console": "pnpm --filter @contagxt/axa-console dev",
@@ -20,8 +20,8 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "test": "pnpm -r --if-present test",
-    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm build:packages && pnpm -r --if-present test",
+    "typecheck": "pnpm build:packages && pnpm -r --if-present typecheck",
     "proto:generate": "pnpm --filter @contagxt/axa-proto generate"
   },
   "devDependencies": {

@@ -1,7 +1,9 @@
 import {
+  AxaError,
   listRegisteredProjects,
   registerProject,
   removeRegisteredProject,
+  restoreProject,
   setDefaultProject,
 } from "@contagxt/axa-core";
 import type { Command } from "commander";
@@ -11,6 +13,14 @@ import { printProjects } from "../format.js";
 interface AddOptions {
   name?: string;
   init?: boolean;
+}
+
+interface RestoreOptions {
+  all?: boolean;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 export function registerProjectsCommand(program: Command): void {
@@ -53,6 +63,46 @@ export function registerProjectsCommand(program: Command): void {
     .action(async (id: string) => {
       const project = await removeRegisteredProject(id);
       console.log(`${pc.green("✓")} Removed ${pc.bold(project.name)} from the registry.`);
+    });
+
+  projects
+    .command("restore")
+    .description("Clone a missing project checkout from its project.ref")
+    .argument("[id]")
+    .option("--all", "restore every missing registered project")
+    .action(async (id: string | undefined, options: RestoreOptions) => {
+      if (id === undefined && !options.all) {
+        throw new AxaError(
+          "INVALID_PROJECT",
+          "Pass a project id, or --all to restore every project.",
+        );
+      }
+      if (id !== undefined && options.all) {
+        throw new AxaError("INVALID_PROJECT", "Pass either a project id or --all, not both.");
+      }
+
+      const targets =
+        id !== undefined
+          ? [id]
+          : (await listRegisteredProjects())
+              .filter((project) => !project.exists)
+              .map((project) => project.id);
+      if (targets.length === 0) {
+        console.log(`${pc.green("✓")} All registered projects are present.`);
+        return;
+      }
+
+      let failed = 0;
+      for (const target of targets) {
+        try {
+          const project = await restoreProject(target);
+          console.log(`${pc.green("✓")} Restored ${pc.bold(project.id)} -> ${project.path}`);
+        } catch (error) {
+          failed += 1;
+          console.error(`${pc.red("✗")} ${target}: ${errorMessage(error)}`);
+        }
+      }
+      if (failed > 0) process.exitCode = 1;
     });
 
   projects

@@ -74,12 +74,6 @@ refer get
 
 # Restore every manifest below this directory too
 refer get -R
-
-# Show manifests and the state of their checkouts and links
-refer list
-
-# Remove the links and the local checkout; the .ref file stays
-refer clean tools.ref
 ```
 
 ### `refer get`
@@ -96,20 +90,6 @@ refer clean tools.ref
 | `-f, --force` | Replace an existing real file or directory at a symlink path. |
 
 Run `refer get` with no file arguments to replay every manifest in the current directory; `-R` includes subdirectories. Pass `.ref` files to replay only those, or use shell expansion such as `refer get *.ref`.
-
-### `refer clean`
-
-`refer clean <name>[.ref]...` removes what a manifest created and keeps the manifest:
-
-- symlinks are removed;
-- a project-local checkout is deleted, but **only if it has no uncommitted changes and no unpushed commits** (`-f` overrides);
-- shared `-g` checkouts are kept, because other links and projects may use them;
-- a manifest recorded from a local path inside a work tree names that repository root as its checkout, so `clean` deletes it only under the same uncommitted/unpushed checks (`-f` overrides);
-- the source of a local-only reference is never touched.
-
-### `refer list`
-
-`refer list [-R]` prints each manifest and the state of its checkout and symlinks. `-R` includes subdirectories. States are `ok`, `missing`, `stale`, `not a symlink`, or `not a git checkout`. The command is read-only.
 
 Global options: `-h/--help`, `-V/--version`, `-v/--verbose`.
 

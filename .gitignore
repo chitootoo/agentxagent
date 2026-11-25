@@ -10,11 +10,7 @@ coverage/
 .DS_Store
 *.log
 
-# Local axa runtime state
-.axa/**/.lock
-.axa/tasks/.create.lock/
-.axa/tasks/.migrate.lock/
-.axa/*.db
-.axa/*.db-*
+# Local axa data is managed under ~/.contagxt/axa/projects/<id>; .axa is a symlink.
+/.axa
 
 .tmp/

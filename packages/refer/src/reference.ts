@@ -1,11 +1,11 @@
-import { type Dirent, existsSync, readdirSync, readlinkSync, rmSync, unlinkSync } from "node:fs";
-import { basename, dirname } from "node:path";
+import { type Dirent, existsSync, readdirSync } from "node:fs";
+import { basename, dirname, isAbsolute, resolve } from "node:path";
 import { die, ReferError, usageError } from "./errors.js";
-import { checkoutDisposable, ensureCheckout } from "./git.js";
+import { ensureCheckout } from "./git.js";
 import type { Session } from "./io.js";
-import { checkSymlinkTokens, findAutoLink, gitignoreAdd, makeLink, resolveLinks } from "./links.js";
-import { readRef } from "./manifest.js";
-import { absPath, expandPath, isSymlink, lexists, normPath, realPath } from "./paths.js";
+import { checkSymlinkTokens, gitignoreAdd, makeLink, resolveLinks } from "./links.js";
+import { readRef, refreshHeader } from "./manifest.js";
+import { absPath, expandPath, isSymlink, lexists, realPath } from "./paths.js";
 import {
   globalCheckoutDir,
   loadRemote,
@@ -19,19 +19,28 @@ interface Checkout {
   global: boolean;
 }
 
-function resolveCheckout(remote: ParsedRemote, localToken: string, session: Session): Checkout {
+function resolveCheckout(
+  remote: ParsedRemote,
+  localToken: string,
+  session: Session,
+  baseDir: string,
+): Checkout {
   if (localToken === ":global") {
     return { path: globalCheckoutDir(remote.url, session.env), global: true };
   }
   if (localToken === "" || localToken === ":auto") {
-    return { path: `./${repoName(remote.url)}`, global: false };
+    return { path: resolve(baseDir, repoName(remote.url)), global: false };
   }
-  return { path: expandPath(localToken, session.env), global: false };
+  const expanded = expandPath(localToken, session.env);
+  return {
+    path: isAbsolute(expanded) ? expanded : resolve(baseDir, expanded),
+    global: false,
+  };
 }
 
-// A checkout in the current directory reserves its own name for :auto links.
-function reservedName(checkout: Checkout): string {
-  if (!checkout.global && dirname(checkout.path) === ".") return basename(checkout.path);
+// A checkout directly in the base directory reserves its own name for :auto links.
+function reservedName(checkout: Checkout, baseDir: string): string {
+  if (!checkout.global && dirname(checkout.path) === baseDir) return basename(checkout.path);
   return "";
 }
 
@@ -41,12 +50,13 @@ function applyRemote(
   update: boolean,
   symlinkTokens: string[],
   session: Session,
+  baseDir: string,
 ): void {
   const parsed = loadRemote(remote, session);
   checkSymlinkTokens(symlinkTokens);
 
   const name = remoteName(parsed);
-  const checkout = resolveCheckout(parsed, localToken, session);
+  const checkout = resolveCheckout(parsed, localToken, session, baseDir);
   ensureCheckout(parsed.url, parsed.rev, checkout.path, update, session);
 
   let target: string;
@@ -62,7 +72,14 @@ function applyRemote(
     }
   }
 
-  const links = resolveLinks(name, target, reservedName(checkout), symlinkTokens, session);
+  const links = resolveLinks(
+    name,
+    target,
+    reservedName(checkout, baseDir),
+    symlinkTokens,
+    session,
+    baseDir,
+  );
   for (const link of links) makeLink(link, target, session);
 
   if (!checkout.global) gitignoreAdd(checkout.path, session);
@@ -73,13 +90,19 @@ function applyRemote(
   }
 }
 
-function applyLocal(localToken: string, symlinkTokens: string[], session: Session): void {
+function applyLocal(
+  localToken: string,
+  symlinkTokens: string[],
+  session: Session,
+  baseDir: string,
+): void {
   if (localToken === "" || localToken === ":auto" || localToken === ":global") {
     usageError("without a remote, the local path must be an existing file or directory");
   }
   checkSymlinkTokens(symlinkTokens);
 
-  const source = expandPath(localToken, session.env);
+  const expanded = expandPath(localToken, session.env);
+  const source = isAbsolute(expanded) ? expanded : resolve(baseDir, expanded);
   if (!existsSync(source)) die(`local path '${source}' does not exist`);
 
   let sourceAbsolute: string;
@@ -90,8 +113,8 @@ function applyLocal(localToken: string, symlinkTokens: string[], session: Sessio
   }
 
   const name = basename(source);
-  const links = resolveLinks(name, sourceAbsolute, "", symlinkTokens, session);
-  if (links.length === 0) links.push(name);
+  const links = resolveLinks(name, sourceAbsolute, "", symlinkTokens, session, baseDir);
+  if (links.length === 0) links.push(resolve(baseDir, name));
 
   for (const link of links) {
     if (existsSync(link) && !isSymlink(link)) {
@@ -116,36 +139,46 @@ export function applyRef(
   update: boolean,
   symlinkTokens: string[],
   session: Session,
+  baseDir: string = process.cwd(),
 ): void {
   if (remote !== "") {
-    applyRemote(remote, localToken, update, symlinkTokens, session);
+    applyRemote(remote, localToken, update, symlinkTokens, session, baseDir);
   } else {
-    applyLocal(localToken, symlinkTokens, session);
+    applyLocal(localToken, symlinkTokens, session, baseDir);
   }
 }
 
-// Run one manifest in its own working directory so relative paths resolve
-// from the manifest's directory.
-export function replayRef(file: string, updateOverride: boolean, session: Session): void {
+export interface ReplayOptions {
+  /** Directory relative tokens resolve from. Defaults to the manifest's directory. */
+  baseDir?: string;
+  /**
+   * Skip creating symlinks. Used when restoring a checkout that is not ready
+   * yet (the project path does not exist); only remote references can restore.
+   */
+  link?: boolean;
+}
+
+// Run one manifest against its own directory without changing the process cwd,
+// so replays are safe inside a server process.
+export function replayRef(
+  file: string,
+  updateOverride: boolean,
+  session: Session,
+  options: ReplayOptions = {},
+): void {
   const ref = readRef(file, session);
   const update = updateOverride || ref.update;
-  const previous = process.cwd();
-  const dir = dirname(file);
+  const baseDir = resolve(/* turbopackIgnore: true */ options.baseDir ?? dirname(file));
 
-  try {
-    process.chdir(dir);
-  } catch {
-    die(`cannot change directory to ${dir}`);
-  }
-  try {
-    applyRef(ref.remote, ref.local, update, ref.symlinks, session);
-  } finally {
-    try {
-      process.chdir(previous);
-    } catch {
-      // The original working directory disappeared; nothing useful to do.
+  if (options.link === false) {
+    if (ref.remote === "") {
+      die(`manifest '${file}' is local-only; there is no remote to restore it from`);
     }
+    applyRef(ref.remote, ref.local, update, [], session, baseDir);
+  } else {
+    applyRef(ref.remote, ref.local, update, ref.symlinks, session, baseDir);
   }
+  refreshHeader(file, session);
 }
 
 function walkRefs(dir: string, root: boolean, found: string[]): void {
@@ -204,225 +237,6 @@ export function replayAll(recursive: boolean, updateOverride: boolean, session: 
     return 1;
   }
   session.reporter.log(`Processed ${files.length} manifest(s)`);
-  return 0;
-}
-
-function removeLink(link: string, session: Session): void {
-  if (isSymlink(link)) {
-    unlinkSync(link);
-    session.reporter.log(`Removed symlink ${link}`);
-  } else if (lexists(link)) {
-    session.reporter.warn(`'${link}' is not a symlink; left in place`);
-  }
-}
-
-export function cleanRef(file: string, session: Session): void {
-  const ref = readRef(file, session);
-  const previous = process.cwd();
-  const dir = dirname(file);
-
-  try {
-    process.chdir(dir);
-  } catch {
-    die(`cannot change directory to ${dir}`);
-  }
-
-  try {
-    let base = "";
-    let target = "";
-    let reserved = "";
-    let checkout: Checkout | undefined;
-
-    if (ref.remote !== "") {
-      const parsed = loadRemote(ref.remote, session);
-      base = remoteName(parsed);
-      checkout = resolveCheckout(parsed, ref.local, session);
-      try {
-        target = absPath(checkout.path);
-      } catch {
-        target = checkout.path;
-      }
-      if (parsed.subpath !== "") target = `${target}/${parsed.subpath}`;
-      reserved = reservedName(checkout);
-    } else {
-      const source = expandPath(ref.local, session.env);
-      base = basename(source);
-      try {
-        target = realPath(source);
-      } catch {
-        target = source;
-      }
-    }
-
-    const links = ref.symlinks.length === 0 ? [base] : ref.symlinks;
-    const removed: string[] = [];
-    for (const raw of links) {
-      let link: string | undefined;
-      if (raw === ":auto") {
-        link = findAutoLink(base, target, reserved, removed);
-        if (link === undefined) continue;
-      } else {
-        link = expandPath(raw, session.env);
-      }
-      // Never delete the referenced local path itself (local-only mode).
-      if (ref.remote === "" && !isSymlink(link)) continue;
-      removeLink(link, session);
-      removed.push(link);
-    }
-
-    // Local-only references never own their source: leave it alone.
-    if (ref.remote === "") return;
-    if (checkout === undefined) return;
-
-    if (checkout.global) {
-      session.reporter.log(`Kept shared checkout ${checkout.path}`);
-      return;
-    }
-    if (isSymlink(checkout.path)) {
-      removeLink(checkout.path, session);
-      return;
-    }
-    if (lexists(`${checkout.path}/.git`)) {
-      if (!session.force) {
-        const disposable = checkoutDisposable(checkout.path, session);
-        if (!disposable.ok) throw new ReferError(disposable.message);
-      }
-      try {
-        rmSync(checkout.path, { recursive: true, force: true });
-      } catch {
-        die(`cannot remove ${checkout.path}`);
-      }
-      session.reporter.log(`Removed checkout ${checkout.path}`);
-      return;
-    }
-    if (lexists(checkout.path)) {
-      session.reporter.warn(`'${checkout.path}' is not a git checkout; left in place`);
-    }
-  } finally {
-    try {
-      process.chdir(previous);
-    } catch {
-      // The original working directory disappeared; nothing useful to do.
-    }
-  }
-}
-
-function checkoutState(path: string): string {
-  if (lexists(`${path}/.git`)) return "ok";
-  if (lexists(path)) return "not a git checkout";
-  return "missing";
-}
-
-function linkState(link: string, target: string): string {
-  if (!lexists(link)) return "missing";
-  if (!isSymlink(link)) return "not a symlink";
-  return readlinkSync(link) === target ? "ok" : "stale";
-}
-
-function listRef(file: string, session: Session): void {
-  const ref = readRef(file, session);
-  checkSymlinkTokens(ref.symlinks);
-
-  const previous = process.cwd();
-  const dir = dirname(file);
-
-  try {
-    process.chdir(dir);
-  } catch {
-    die(`cannot change directory to ${dir}`);
-  }
-
-  try {
-    let base = "";
-    let target = "";
-    let reserved = "";
-
-    if (ref.remote !== "") {
-      const parsed = loadRemote(ref.remote, session);
-      base = remoteName(parsed);
-      const checkout = resolveCheckout(parsed, ref.local, session);
-      try {
-        target = absPath(checkout.path);
-      } catch {
-        target = checkout.path;
-      }
-      if (parsed.subpath !== "") target = `${target}/${parsed.subpath}`;
-      reserved = reservedName(checkout);
-
-      session.reporter.log(`  remote: ${ref.remote}`);
-      session.reporter.log(
-        `  checkout: ${checkout.path} (${checkoutState(checkout.path)}${checkout.global ? ", shared" : ""})`,
-      );
-      if (parsed.subpath !== "") {
-        session.reporter.log(
-          `  subpath: ${parsed.subpath} (${lexists(target) ? "ok" : "missing"})`,
-        );
-      }
-    } else {
-      const source = expandPath(ref.local, session.env);
-      base = basename(source);
-      try {
-        target = realPath(source);
-      } catch {
-        target = source;
-      }
-      session.reporter.log(`  local: ${ref.local}`);
-      session.reporter.log(`  source: ${source} (${lexists(source) ? "ok" : "missing"})`);
-    }
-
-    const tokens = ref.remote === "" && ref.symlinks.length === 0 ? [":auto"] : ref.symlinks;
-    if (tokens.length === 0) {
-      session.reporter.log("  links: none");
-      return;
-    }
-
-    const removed: string[] = [];
-    for (const raw of tokens) {
-      let link: string;
-      if (raw === ":auto") {
-        const found = findAutoLink(base, target, reserved, removed);
-        if (found === undefined) {
-          session.reporter.log("  symlink: :auto (missing)");
-          continue;
-        }
-        removed.push(found);
-        link = found;
-      } else {
-        link = normPath(expandPath(raw, session.env));
-      }
-      session.reporter.log(`  symlink: ${link} -> ${target} (${linkState(link, target)})`);
-    }
-  } finally {
-    try {
-      process.chdir(previous);
-    } catch {
-      // The original working directory disappeared; nothing useful to do.
-    }
-  }
-}
-
-export function listRefs(recursive: boolean, session: Session): number {
-  const files = findRefs(recursive);
-  if (files.length === 0) {
-    session.reporter.log(`No .ref files found in this directory${recursive ? " or below" : ""}`);
-    return 0;
-  }
-
-  let failed = 0;
-  for (const file of files) {
-    session.reporter.log(`==> ${file}`);
-    try {
-      listRef(file, session);
-    } catch (error) {
-      failed += 1;
-      reportError(session, error);
-    }
-  }
-
-  if (failed > 0) {
-    session.reporter.error(`${failed} of ${files.length} manifest(s) failed`);
-    return 1;
-  }
   return 0;
 }
 

@@ -109,6 +109,11 @@ export function printProjects(projects: ListProjectsResult[]): void {
     console.log(`  ${pc.dim(project.path)}`);
     console.log(`  ${counts} · ${project.counts.backlog} backlog`);
   }
+  if (projects.some((project) => !project.exists)) {
+    console.log(
+      pc.dim('\nMissing checkouts can be cloned again with "axa projects restore --all".'),
+    );
+  }
 }
 
 export function printBoard(tasks: Task[]): void {

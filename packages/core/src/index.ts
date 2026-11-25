@@ -7,8 +7,6 @@ export {
 } from "./activity-log.js";
 export type { RegisterProjectInput } from "./config.js";
 export {
-  getAxaHome,
-  getConfigPath,
   getRegisteredProject,
   listRegisteredProjects,
   readConfig,
@@ -37,6 +35,7 @@ export {
   slugifyTitle,
   stringifyFrontmatterData,
 } from "./frontmatter.js";
+export { getAxaHome, getConfigPath, getProjectsRoot } from "./home.js";
 export type { InboxNote, InboxNoteInput, InboxState } from "./inbox.js";
 export {
   discardInboxNote,
@@ -60,15 +59,23 @@ export {
 } from "./paths.js";
 export type { ProjectIdentity, ProjectLocalConfig } from "./project-id.js";
 export {
-  isPortableProjectId,
-  normalizeGitRemoteUrl,
   PROJECT_CONFIG_FILE,
   projectConfigPath,
-  readGitRemoteUrl,
+  readProjectConfigAt,
   readProjectLocalConfig,
   resolveProjectIdentity,
+  writeProjectConfigAt,
   writeProjectLocalConfig,
 } from "./project-id.js";
+export { isProjectId, newProjectId } from "./project-ids.js";
+export {
+  managedAxaDir,
+  PROJECT_REF_FILE,
+  projectManageDir,
+  projectRefPath,
+  readProjectRef,
+  restoreProject,
+} from "./project-store.js";
 export { type PromptParams, renderPrompt, renderTaskCompletedNote, savePrompt } from "./prompt.js";
 export {
   ARCHIVE_AFTER_MS,

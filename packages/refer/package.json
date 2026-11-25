@@ -7,6 +7,12 @@
   "bin": {
     "refer": "./dist/index.js"
   },
+  "exports": {
+    ".": {
+      "types": "./dist/library.d.ts",
+      "import": "./dist/library.js"
+    }
+  },
   "files": [
     "dist"
   ],

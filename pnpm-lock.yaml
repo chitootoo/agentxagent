@@ -264,6 +264,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@contagxt/refer':
+        specifier: workspace:*
+        version: link:../refer
       yaml:
         specifier: ^2.8.1
         version: 2.9.1

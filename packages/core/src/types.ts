@@ -65,7 +65,7 @@ export interface ProjectConfig {
 
 export interface AxaConfig {
   version: 1;
-  projects: ProjectConfig[];
+  /** Projects are recorded as `$AXA_HOME/projects/<id>/project.ref`. */
   defaultProjectId?: string;
 }
 

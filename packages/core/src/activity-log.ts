@@ -1,6 +1,6 @@
 import { appendFile, mkdir, readFile, stat } from "node:fs/promises";
 import { join } from "node:path";
-import { getAxaHome } from "./config.js";
+import { getAxaHome } from "./home.js";
 
 export interface ActivityEntryInput {
   projectId: string;

@@ -111,9 +111,33 @@ macOS / iOS Safari 可“分享 → 添加到主屏幕”，Android Chrome 可�
 
 | 变量                | 默认值                               | 作用                  |
 | ----------------- | --------------------------------- | ------------------- |
-| `AXA_HOME`        | `~/.contagxt/axa`                 | 项目注册表、活动日志与秘书数据目录    |
+| `AXA_HOME`        | `~/.contagxt/axa`                 | 项目注册根、活动日志与秘书数据目录    |
 | `AXA_CONSOLE_DB`  | 系统临时目录 `axa-console/<hash>/console.db` | 控制台活动日志 SQLite 缓存   |
 | `AXA_DEV_ORIGINS` | `**.ts.net, localhost, 127.0.0.1` | 控制台开发模式允许的跨域来源，逗号分隔 |
+
+### 项目存储
+
+纳管项目时生成一个 UUID 作为项目 id，并在 `~/.contagxt/axa/projects/<id>/` 下建立独立管理目录：
+
+```
+~/.contagxt/axa/projects/<id>/
+├── project.ref      # refer 清单：git 项目记录 remote + local，其余记录 .axa 链接
+└── .axa/            # 任务、SKILL.md、tasks/README.md 与项目 config.json
+```
+
+`project.ref` 由 `@contagxt/refer` 的写入器生成、读取器解析，不使用自定义字段。项目是带 `origin` 的 git 工作树时，清单记录 `remote` 与 `local`（检出路径），迁移或换机后执行 `refer get project.ref` 即可重新 clone/checkout 该项目；非 git 项目则记录 `local: .axa` 与 `symlink: <project>/.axa`。项目根目录的 `.axa` 始终由 refer 的 `applyRef` 建立为指向管理目录的符号链接，worker 与 CLI 继续按 `<project>/.axa` 读写。项目注册表以 `project.ref` 为准；`~/.contagxt/axa/config.json` 只保存 `defaultProjectId`，项目名称等元数据保存在 `.axa/config.json`。
+
+#### 迁移到另一台机器
+
+整个 `~/.contagxt/axa` 目录可以原样复制：`projects/<id>/` 下的任务数据随目录一起迁移，`project.ref` 里的路径按 `~` 记录，因此只要新机器保持相同的相对目录结构即可直接命中。工作树不存在时：
+
+```bash
+axa projects list          # 缺失的项目标记为 [missing]
+axa projects restore <id>  # 按 project.ref 的 remote 重新 clone/checkout，并重建 .axa 链接
+axa projects restore --all # 恢复所有缺失项目
+```
+
+恢复使用 refer 的 `replayRef`（以 `project.ref` 所在目录为 baseDir，不修改进程 cwd），只创建 checkout、不触碰清单里的旧链接，随后由 `ensureManagedProject` 重建 `<project>/.axa`。非 git 项目没有 remote，无法自动恢复，命令会提示手动复制到清单记录的路径。
 
 ## 仓库结构
 
@@ -123,7 +147,7 @@ packages/
 ├── core/      # 文件布局、状态机、任务锁、惰性维护与项目注册表
 ├── cli/       # axa 命令
 └── console/   # Next.js 控制台与 Connect RPC 服务端
-.axa/          # 本项目自己的任务、SKILL.md 与 tasks/README.md（dogfooding）
+.axa/          # 符号链接：~/.contagxt/axa/projects/<id>/.axa
 ```
 
 ## License

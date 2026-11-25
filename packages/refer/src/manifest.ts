@@ -4,7 +4,9 @@ import type { Session } from "./io.js";
 import { homeDir, refPath } from "./paths.js";
 
 export const VERSION = "0.1.1";
-export const HOMEPAGE = "https://github.com/chitootoo/agentxagent/tree/main/packages/refer";
+export const HOMEPAGE = "https://www.npmjs.com/package/@contagxt/refer";
+const HEADER_PREFIX = "# Managed by refer - ";
+const HEADER = `${HEADER_PREFIX}${HOMEPAGE}`;
 
 export interface RefManifest {
   remote: string;
@@ -81,9 +83,10 @@ export function writeRef(
   if (existsSync(file)) {
     header = readFileSync(file, "utf8")
       .split("\n")
-      .filter((line) => line.startsWith("#"));
+      .filter((line) => line.startsWith("#"))
+      .map((line) => (line.startsWith(HEADER_PREFIX) ? HEADER : line));
   } else {
-    header = [`# Managed by refer - ${HOMEPAGE}`];
+    header = [HEADER];
   }
 
   const home = homeDir(session.env);
@@ -98,4 +101,23 @@ export function writeRef(
 
   writeFileSync(file, `${lines.join("\n")}\n`);
   session.reporter.log(`Wrote ${file}`);
+}
+
+// Point the managed header line at the current homepage. Other comments are
+// left alone, so hand-written notes survive an upgrade. Returns whether the
+// file changed.
+export function refreshHeader(file: string, session: Session): boolean {
+  let text: string;
+  try {
+    text = readFileSync(file, "utf8");
+  } catch {
+    return false;
+  }
+  const lines = text.split("\n");
+  const index = lines.findIndex((line) => line.startsWith(HEADER_PREFIX));
+  if (index === -1 || lines[index] === HEADER) return false;
+  lines[index] = HEADER;
+  writeFileSync(file, lines.join("\n"));
+  session.reporter.log(`Updated the header in ${file}`);
+  return true;
 }

@@ -9,16 +9,16 @@ import {
   realpathSync,
   rmSync,
   symlinkSync,
-  unlinkSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { run } from "./cli.js";
-import type { Reporter } from "./io.js";
+import type { Reporter, Session } from "./io.js";
 import { VERSION } from "./manifest.js";
 import { expandPath, normPath, refPath } from "./paths.js";
+import { replayRef } from "./reference.js";
 import { globalCheckoutDir, isGitUrl, parseRemote, repoName } from "./remote.js";
 
 interface Captured {
@@ -60,6 +60,11 @@ function refer(args: string[]) {
   const { reporter, captured } = captureReporter();
   const code = run(args, { env, reporter });
   return { code, captured };
+}
+
+function session(): Session {
+  const { reporter } = captureReporter();
+  return { env, reporter, force: false };
 }
 
 function output(captured: Captured): string {
@@ -261,19 +266,13 @@ describe("CLI basics", () => {
       const text = output(captured);
       expect(text).toContain("Usage:");
       expect(text).toContain("refer get -r <remote>");
-      expect(text).toContain("refer clean");
-      expect(text).toContain("refer list");
       expect(text).toContain(".ref format");
       expect(text).toContain("REFER_REPOS_ROOT");
     }
   });
 
   it("shows help after a subcommand", () => {
-    for (const args of [
-      ["get", "-h"],
-      ["clean", "--help"],
-      ["list", "-h"],
-    ]) {
+    for (const args of [["get", "-h"]]) {
       const { code, captured } = refer(args);
       expect(code).toBe(0);
       expect(output(captured)).toContain("Usage:");
@@ -304,7 +303,6 @@ describe("CLI basics", () => {
     expect(refer(["get", "README.md"]).code).toBe(2);
     expect(refer(["get", "*"]).code).toBe(2);
     expect(output(refer(["get", "*"]).captured)).toContain("expected a .ref file, got '*'");
-    expect(refer(["clean"]).code).toBe(2);
   });
 });
 
@@ -317,12 +315,28 @@ describe("get: remote references", () => {
     expect(existsSync("tools/README.md")).toBe(true);
     expectLine("tools.ref", `remote: ${url}`);
     expectLine("tools.ref", "local: :auto");
-    expectLine(
-      "tools.ref",
-      "# Managed by refer - https://github.com/chitootoo/agentxagent/tree/main/packages/refer",
-    );
+    expectLine("tools.ref", "# Managed by refer - https://www.npmjs.com/package/@contagxt/refer");
     expectLine(".gitignore", "/tools");
     expectNoLine(".gitignore", "tools.ref");
+  });
+
+  it("refreshes the managed header on replay and keeps other comments", () => {
+    const outside = join(tmp, "outside/workspace");
+    mkdirSync(outside, { recursive: true });
+    expect(refer(["get", "-l", outside]).code).toBe(0);
+
+    const current = "# Managed by refer - https://www.npmjs.com/package/@contagxt/refer";
+    const text = readFileSync("workspace.ref", "utf8");
+    writeFileSync(
+      "workspace.ref",
+      text
+        .replace(current, "# Managed by refer - https://example.invalid/old")
+        .replace("\nlocal:", "\n# keep me\n\nlocal:"),
+    );
+
+    expect(refer(["get"]).code).toBe(0);
+    expectLine("workspace.ref", current);
+    expectLine("workspace.ref", "# keep me");
   });
 
   it("rejects -R when adding a reference", () => {
@@ -660,6 +674,42 @@ describe("manifests", () => {
     expectLink(join(work, "proj/assets"), join(tmp, "assets"));
   });
 
+  it("replays a manifest from another directory without changing the cwd", () => {
+    const url = makeRemote("portable");
+    mkdirSync("proj");
+    const file = join(work, "proj/portable.ref");
+    writeFileSync(file, `remote: ${url}\nlocal: :auto\nsymlink: :auto\n`);
+
+    process.chdir(tmp);
+    try {
+      replayRef(file, false, session());
+      expect(process.cwd()).toBe(tmp);
+    } finally {
+      process.chdir(work);
+    }
+
+    expect(existsSync(join(work, "proj/portable/.git"))).toBe(true);
+    expectLink(join(work, "proj/portable2"), join(work, "proj/portable"));
+  });
+
+  it("restores a remote checkout without creating links", () => {
+    const url = makeRemote("migrate");
+    writeFileSync("migrate.ref", `remote: ${url}\nlocal: :auto\nsymlink: ./linked\n`);
+
+    replayRef("migrate.ref", false, session(), { link: false });
+
+    expect(existsSync("migrate/.git")).toBe(true);
+    expectMissing("linked");
+  });
+
+  it("refuses to restore a local-only manifest without links", () => {
+    mkdirSync("source");
+    writeFileSync("local.ref", "local: ./source\nsymlink: ./linked\n");
+
+    expect(() => replayRef("local.ref", false, session(), { link: false })).toThrow(/local-only/u);
+    expectMissing("linked");
+  });
+
   it("restores a fresh clone to a clean git status", () => {
     const url = makeRemote("dep");
     expect(refer(["get", "-r", url, "-s", "./linked"]).code).toBe(0);
@@ -796,145 +846,5 @@ describe(".gitignore handling", () => {
     process.chdir(plain);
     expect(refer(["get", "-l", "./src", "-s", "./a"]).code).toBe(0);
     expectMissing(join(plain, ".gitignore"));
-  });
-});
-
-describe("clean", () => {
-  it("removes explicit links and keeps the manifest", () => {
-    writeFileSync(
-      "myref.ref",
-      "remote: file:///some/where.git\nlocal: :global\nsymlink: ./l1\nsymlink: ./l2\n",
-    );
-    symlinkSync("/some/path", "l1");
-    symlinkSync("/some/path", "l2");
-
-    expect(refer(["clean", "myref.ref"]).code).toBe(0);
-    expect(existsSync("myref.ref")).toBe(true);
-    expectMissing("l1");
-    expectMissing("l2");
-  });
-
-  it("removes automatic links and the project-local checkout", () => {
-    const url = makeRemote("tools");
-    expect(refer(["get", "-r", url, "-s", "-s", "./elsewhere/t"]).code).toBe(0);
-    expect(refer(["clean", "tools"]).code).toBe(0);
-    expect(existsSync("tools.ref")).toBe(true);
-    expectMissing("tools");
-    expectMissing("tools2");
-    expectMissing("tools3");
-    expectMissing("elsewhere/t");
-  });
-
-  it("never deletes a local-only source", () => {
-    mkdirSync("source");
-    writeFileSync("source/data", "precious\n");
-    expect(refer(["get", "-l", "./source", "-s", "./link", "-s"]).code).toBe(0);
-    expect(refer(["clean", "source.ref"]).code).toBe(0);
-    expect(readFileSync("source/data", "utf8")).toBe("precious\n");
-    expectMissing("link");
-    expectMissing("source2");
-  });
-
-  it("refuses to delete unsaved work without --force", () => {
-    const url = makeRemote("work");
-    expect(refer(["get", "-r", url]).code).toBe(0);
-    writeFileSync("work/README.md", "content\nedit\n");
-
-    const dirty = refer(["clean", "work.ref"]);
-    expect(dirty.code).toBe(1);
-    expect(output(dirty.captured)).toContain("uncommitted changes");
-    expect(existsSync("work/.git")).toBe(true);
-
-    git(["commit", "-qam", "local only"], "work");
-    const unpushed = refer(["clean", "work.ref"]);
-    expect(unpushed.code).toBe(1);
-    expect(output(unpushed.captured)).toContain("not on any remote");
-
-    expect(refer(["clean", "-f", "work.ref"]).code).toBe(0);
-    expectMissing("work");
-  });
-
-  it("keeps shared checkouts", () => {
-    const url = makeRemote("shared");
-    expect(refer(["get", "-r", url, "-g", "-s", "./s"]).code).toBe(0);
-    const { code, captured } = refer(["clean", "shared.ref"]);
-    expect(code).toBe(0);
-    expectMissing("s");
-    expect(existsSync(`${globalCache("shared")}/.git`)).toBe(true);
-    expect(output(captured)).toContain("Kept shared checkout");
-  });
-
-  it("fails when the manifest is missing", () => {
-    const { code, captured } = refer(["clean", "nothing.ref"]);
-    expect(code).toBe(1);
-    expect(output(captured)).toContain("does not exist");
-  });
-
-  it("allows get to restore after clean", () => {
-    const url = makeRemote("cycle");
-    expect(refer(["get", "-r", url, "-s"]).code).toBe(0);
-    expect(refer(["clean", "cycle.ref"]).code).toBe(0);
-    expect(refer(["get", "cycle.ref"]).code).toBe(0);
-    expectLink("cycle2", join(work, "cycle"));
-  });
-});
-
-describe("list", () => {
-  it("shows checkout and link state", () => {
-    const url = makeRemote("dep");
-    expect(refer(["get", "-r", url, "-s", "./linked"]).code).toBe(0);
-
-    const { code, captured } = refer(["list"]);
-    expect(code).toBe(0);
-    const text = output(captured);
-    expect(text).toContain("==> ./dep.ref");
-    expect(text).toContain(`remote: ${url}`);
-    expect(text).toContain("checkout: ./dep (ok)");
-    expect(text).toContain("symlink: linked -> ");
-    expect(text).toContain("(ok)");
-  });
-
-  it("reports missing and stale links", () => {
-    mkdirSync("source");
-    mkdirSync("other");
-    expect(refer(["get", "-l", "./source", "-s", "./link"]).code).toBe(0);
-
-    unlinkSync("link");
-    expect(output(refer(["list"]).captured)).toContain("symlink: link -> ");
-    expect(output(refer(["list"]).captured)).toContain("(missing)");
-
-    symlinkSync(join(work, "other"), "link");
-    expect(output(refer(["list"]).captured)).toContain("(stale)");
-  });
-
-  it("resolves automatic links", () => {
-    const url = makeRemote("auto");
-    expect(refer(["get", "-r", url, "-s"]).code).toBe(0);
-    const text = output(refer(["list"]).captured);
-    expect(text).toContain("symlink: auto2 -> ");
-    expect(text).toContain("(ok)");
-
-    unlinkSync("auto2");
-    expect(output(refer(["list"]).captured)).toContain("symlink: :auto (missing)");
-  });
-
-  it("includes nested manifests only with -R", () => {
-    const url = makeRemote("nested");
-    mkdirSync("sub");
-    writeFileSync("sub/nested.ref", `remote: ${url}\n`);
-
-    expect(output(refer(["list"]).captured)).not.toContain("sub/nested.ref");
-    expect(output(refer(["list", "-R"]).captured)).toContain("==> ./sub/nested.ref");
-  });
-
-  it("reports when there are no manifests", () => {
-    const { code, captured } = refer(["list"]);
-    expect(code).toBe(0);
-    expect(output(captured)).toContain("No .ref files found in this directory");
-  });
-
-  it("rejects unknown options and arguments", () => {
-    expect(refer(["list", "--bogus"]).code).toBe(2);
-    expect(refer(["list", "extra"]).code).toBe(2);
   });
 });

@@ -30,6 +30,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@contagxt/refer": "workspace:*",
     "yaml": "^2.8.1"
   },
   "devDependencies": {

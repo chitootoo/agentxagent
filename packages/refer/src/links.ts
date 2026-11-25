@@ -9,7 +9,7 @@ import {
   symlinkSync,
   unlinkSync,
 } from "node:fs";
-import { basename, dirname } from "node:path";
+import { basename, dirname, isAbsolute, resolve } from "node:path";
 import { die, usageError } from "./errors.js";
 import { git } from "./git.js";
 import type { Session } from "./io.js";
@@ -67,47 +67,27 @@ export function checkSymlinkTokens(tokens: string[]): void {
 
 // Pick the name for an :auto symlink: <base>, <base>2, <base>3, ... The first
 // name that is free, or that already links to <target>, so replays are stable.
+// Links are created under <baseDir> (absolute), which keeps replays independent
+// of the process working directory.
 export function autoLinkName(
   base: string,
   target: string,
   reserved: string,
   taken: string[],
+  baseDir: string,
 ): string {
   let candidate = base;
   let counter = 2;
   for (let attempt = 0; attempt < 10_000; attempt += 1) {
-    if (candidate !== reserved && !taken.includes(candidate)) {
-      if (isSymlink(candidate) && readlinkSync(candidate) === target) return candidate;
-      if (!lexists(candidate)) return candidate;
+    const path = resolve(baseDir, candidate);
+    if (candidate !== reserved && !taken.includes(path)) {
+      if (isSymlink(path) && readlinkSync(path) === target) return path;
+      if (!lexists(path)) return path;
     }
     candidate = `${base}${counter}`;
     counter += 1;
   }
   die(`cannot find a free symlink name for '${base}'`);
-}
-
-// Find an existing :auto symlink to <target> (used by clean); empty if none.
-export function findAutoLink(
-  base: string,
-  target: string,
-  reserved: string,
-  removed: string[],
-): string | undefined {
-  let candidate = base;
-  let counter = 2;
-  while (counter <= 100) {
-    if (
-      candidate !== reserved &&
-      !removed.includes(candidate) &&
-      isSymlink(candidate) &&
-      readlinkSync(candidate) === target
-    ) {
-      return candidate;
-    }
-    candidate = `${base}${counter}`;
-    counter += 1;
-  }
-  return undefined;
 }
 
 export function makeLink(link: string, target: string, session: Session): void {
@@ -140,7 +120,8 @@ export function makeLink(link: string, target: string, session: Session): void {
   gitignoreAdd(link, session);
 }
 
-// Resolve symlink tokens to concrete link paths. Explicit paths are claimed
+// Resolve symlink tokens to concrete, absolute link paths. Relative tokens
+// resolve from <baseDir> instead of the process cwd. Explicit paths are claimed
 // first so an :auto name never collides with one of them.
 export function resolveLinks(
   base: string,
@@ -148,18 +129,21 @@ export function resolveLinks(
   reserved: string,
   tokens: string[],
   session: Session,
+  baseDir: string,
 ): string[] {
   const explicit = tokens
     .filter((token) => token !== "" && token !== ":auto")
-    .map((token) => normPath(expandPath(token, session.env)));
+    .map((token) => normPath(expandPath(token, session.env)))
+    .map((path) => (isAbsolute(path) ? path : resolve(baseDir, path)));
 
   const resolved: string[] = [];
   for (const raw of tokens) {
     if (raw === "") continue;
     if (raw === ":auto") {
-      resolved.push(autoLinkName(base, target, reserved, [...explicit, ...resolved]));
+      resolved.push(autoLinkName(base, target, reserved, [...explicit, ...resolved], baseDir));
     } else {
-      resolved.push(normPath(expandPath(raw, session.env)));
+      const expanded = normPath(expandPath(raw, session.env));
+      resolved.push(isAbsolute(expanded) ? expanded : resolve(baseDir, expanded));
     }
   }
   return resolved;

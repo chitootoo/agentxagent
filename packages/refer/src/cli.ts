@@ -1,11 +1,9 @@
-import { basename } from "node:path";
+import { addRef } from "./add.js";
 import { die, ReferError, usageError } from "./errors.js";
-import { gitAvailable, gitOrigin } from "./git.js";
+import { gitAvailable } from "./git.js";
 import { createReporter, type Reporter, type Session } from "./io.js";
-import { HOMEPAGE, readRef, VERSION, writeRef } from "./manifest.js";
-import { expandPath, homeDir, isFile, refPath } from "./paths.js";
-import { applyRef, cleanRef, listRefs, replayAll, replayRef, reportError } from "./reference.js";
-import { isGitUrl, loadRemote, parseRemote, remoteName } from "./remote.js";
+import { HOMEPAGE, VERSION } from "./manifest.js";
+import { replayAll, replayRef, reportError } from "./reference.js";
 
 export interface RunOptions {
   env?: NodeJS.ProcessEnv;
@@ -35,8 +33,6 @@ Usage:
   refer get -r <remote> [-l [<path>] | -g] [-s [<path>]]... [-u] [-n <name>]
   refer get -l <path> [-s [<path>]]... [-n <name>]
   refer get [-u] [-R] [<file.ref>...]
-  refer clean [-f] <name>[.ref]...
-  refer list [-R]
   refer help | version
 
 With no file arguments, 'get' restores every .ref in this directory. Add -R
@@ -45,8 +41,6 @@ recorded with that repository's origin and sub path, so it restores elsewhere.
 
 Commands:
   get        Clone/link a reference and write <name>.ref, or replay manifests
-  clean      Remove the checkouts and symlinks a manifest created (keeps .ref)
-  list       Show manifests and the state of their checkouts and symlinks
   help       Show this help
   version    Show the version
 
@@ -61,12 +55,6 @@ Options for 'get':
   -n, --name <name>       Manifest name (default: repo or sub path basename)
   -R, --recursive         Replay .ref files in subdirectories too
   -f, --force             Replace existing non-symlink files at symlink paths
-
-Options for 'clean':
-  -f, --force             Also delete checkouts with uncommitted/unpushed work
-
-Options for 'list':
-  -R, --recursive         Include .ref files in subdirectories
 
 Global options:
   -v, --verbose           Print debug output
@@ -94,7 +82,6 @@ Examples:
             -s .agents/skills/skill-creator -s .claude/skills/skill-creator
   refer get -l ~/notes -s ./notes
   refer get -R
-  refer clean tools.ref
 
 More: ${HOMEPAGE}
 `;
@@ -191,7 +178,7 @@ function parseGet(args: string[], session: Session): GetOptions {
 function cmdGet(args: string[], session: Session): number {
   const options = parseGet(args, session);
   const { positional } = options;
-  let { remote, local } = options;
+  const { remote, local } = options;
 
   const addInput =
     remote !== "" || local !== "" || options.symlinks.length > 0 || options.name !== "";
@@ -224,117 +211,21 @@ function cmdGet(args: string[], session: Session): number {
   if (remote === "" && local === "") {
     usageError("'get' needs -r <remote> or -l <path>");
   }
-  if (remote !== "" && local === "") local = ":auto";
 
-  // Without -r, a path inside a git work tree is recorded as a reference to
-  // that repository's origin, so the manifest restores elsewhere.
-  if (remote === "") {
-    if (local === ":auto" || local === ":global") {
-      usageError("without a remote, the local path must be an existing file or directory");
-    }
-    const source = expandPath(local, session.env);
-    const origin = gitOrigin(source, session);
-    if (origin !== undefined) {
-      const candidate = origin.subpath === "" ? origin.url : `${origin.url}/${origin.subpath}`;
-      const parsed = parseRemote(candidate);
-      if (isGitUrl(origin.url) && parsed.url === origin.url && parsed.subpath === origin.subpath) {
-        remote = candidate;
-        local = origin.root;
-        session.reporter.debug(`recording ${origin.url} (${origin.root}) for ${source}`);
-        // Keep the local-only default: a link named after the target.
-        if (options.symlinks.length === 0) {
-          const fallback = basename(source);
-          if (fallback !== "" && fallback !== "." && fallback !== "..") {
-            options.symlinks.push(fallback);
-          }
-        }
-      } else if (origin.subpath !== "") {
-        session.reporter.warn(
-          `cannot record remote '${origin.url}': the URL must end in .git to carry a sub path; writing a local-only reference`,
-        );
-      }
-    }
-  }
-
-  // Work out the manifest name before touching anything.
-  let manifestName = options.name;
-  if (manifestName === "") {
-    if (remote !== "") {
-      manifestName = remoteName(loadRemote(remote, session));
-    } else {
-      manifestName = basename(expandPath(local, session.env));
-    }
-  }
-  if (
-    manifestName === "" ||
-    manifestName === "." ||
-    manifestName === ".." ||
-    manifestName.includes("/")
-  ) {
-    usageError(`invalid manifest name '${manifestName}'`);
-  }
-  if (manifestName.endsWith(".ref")) manifestName = manifestName.slice(0, -4);
-  const file = `./${manifestName}.ref`;
-
-  if (isFile(file)) {
-    const existing = readRef(file, session);
-    if (
-      existing.remote !== remote ||
-      (remote === "" && existing.local !== refPath(local, homeDir(session.env)))
-    ) {
-      die(`${file} already describes a different reference; pick another name with -n`);
-    }
-  }
-
-  applyRef(remote, local, options.update, options.symlinks, session);
-  writeRef(file, remote, local, options.update, options.symlinks, session);
+  // The same entry point the library uses: remote derivation, symlink
+  // defaults, manifest naming and writing all live in addRef.
+  addRef(
+    {
+      local,
+      ...(remote !== "" ? { remote } : {}),
+      symlinks: options.symlinks,
+      update: options.update,
+      ...(options.name !== "" ? { name: options.name } : {}),
+    },
+    session,
+  );
   return 0;
 }
-
-function cmdClean(args: string[], session: Session): number {
-  const files: string[] = [];
-  let index = 0;
-  while (index < args.length) {
-    const arg = args[index]!;
-    if (arg === "-f" || arg === "--force") {
-      session.force = true;
-      index += 1;
-    } else if (arg === "--") {
-      files.push(...args.slice(index + 1));
-      break;
-    } else if (arg.startsWith("-")) {
-      usageError(`unknown option '${arg}'`);
-    } else {
-      files.push(arg);
-      index += 1;
-    }
-  }
-  if (files.length === 0) usageError("'clean' needs at least one .ref file");
-
-  let failed = false;
-  for (const arg of files) {
-    const file = arg.endsWith(".ref") ? arg : `${arg}.ref`;
-    try {
-      cleanRef(file, session);
-    } catch (error) {
-      reportError(session, error);
-      failed = true;
-    }
-  }
-  return failed ? 1 : 0;
-}
-
-function cmdList(args: string[], session: Session): number {
-  let recursive = false;
-  for (const arg of args) {
-    if (arg === "-R" || arg === "--recursive") recursive = true;
-    else if (arg.startsWith("-")) usageError(`unknown option '${arg}'`);
-    else usageError(`unexpected argument '${arg}'`);
-  }
-  return listRefs(recursive, session);
-}
-
-const HELP_COMMANDS = new Set(["get", "clean", "list"]);
 
 function wantsHelp(args: string[]): boolean {
   for (const arg of args) {
@@ -370,7 +261,7 @@ export function run(argv: string[], options: RunOptions = {}): number {
       reporter.log(helpText());
       return 0;
     }
-    if (wantsHelp(rest) && HELP_COMMANDS.has(command)) {
+    if (wantsHelp(rest) && command === "get") {
       reporter.log(helpText());
       return 0;
     }
@@ -385,10 +276,6 @@ export function run(argv: string[], options: RunOptions = {}): number {
     switch (command) {
       case "get":
         return cmdGet(rest, session);
-      case "clean":
-        return cmdClean(rest, session);
-      case "list":
-        return cmdList(rest, session);
       default:
         usageError(`unknown command '${command}'`);
     }

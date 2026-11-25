@@ -143,35 +143,3 @@ export function updateCheckout(dir: string, session: Session): void {
     session.reporter.warn(`could not fast-forward ${dir}; leaving it as is`);
   }
 }
-
-// Refuse to delete a checkout that holds work that exists nowhere else.
-export function checkoutDisposable(
-  dir: string,
-  session: Session,
-): { ok: true } | { ok: false; message: string } {
-  const status = git(["-C", dir, "status", "--porcelain"], session);
-  if (status.status !== 0) {
-    return { ok: false, message: `cannot inspect ${dir}` };
-  }
-  if (status.stdout.trim() !== "") {
-    return {
-      ok: false,
-      message: `${dir} has uncommitted changes; commit/stash them or use 'refer clean -f'`,
-    };
-  }
-
-  const unpushed = git(
-    ["-C", dir, "log", "--branches", "--not", "--remotes", "--oneline"],
-    session,
-  );
-  if (unpushed.status !== 0) {
-    return { ok: false, message: `cannot inspect ${dir}` };
-  }
-  if (unpushed.stdout.trim() !== "") {
-    return {
-      ok: false,
-      message: `${dir} has commits that are not on any remote; push them or use 'refer clean -f'`,
-    };
-  }
-  return { ok: true };
-}

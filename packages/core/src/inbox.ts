@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readdir, readFile, rename, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { getAxaHome } from "./config.js";
 import { writeFileAtomic } from "./fs-utils.js";
+import { getAxaHome } from "./home.js";
 
 export const INBOX_STATES = ["unread", "processing", "processed"] as const;
 export type InboxState = (typeof INBOX_STATES)[number];
