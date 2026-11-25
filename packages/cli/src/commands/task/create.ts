@@ -2,7 +2,7 @@ import type { TaskPriority } from "@contagxt/axa-core";
 import { createTask } from "@contagxt/axa-core";
 import type { Command } from "commander";
 import pc from "picocolors";
-import { type ProjectOption, resolveProject } from "../context.js";
+import { type ProjectOption, resolveProject } from "../../context.js";
 
 interface CreateOptions extends ProjectOption {
   priority?: string;

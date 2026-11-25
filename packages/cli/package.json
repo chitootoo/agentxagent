@@ -5,7 +5,9 @@
   "license": "MIT",
   "type": "module",
   "bin": {
-    "axa": "./dist/index.js"
+    "axa": "./dist/index.js",
+    "axa-task": "./dist/task.js",
+    "axa-project": "./dist/project.js"
   },
   "files": [
     "dist"
@@ -19,7 +21,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsup && chmod +x dist/index.js",
+    "build": "tsup && chmod +x dist/index.js dist/task.js dist/project.js",
     "dev": "tsx src/index.ts",
     "typecheck": "tsc --noEmit"
   },

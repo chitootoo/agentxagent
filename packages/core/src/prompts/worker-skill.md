@@ -1,6 +1,6 @@
 ---
 name: axa
-description: Use the axa CLI to pick up, track, and finish work in a project that stores tasks under .axa/. Trigger this skill when a repository contains .axa/SKILL.md, when the user asks you to work on axa tasks, or when you need to coordinate with other workers without duplicating effort.
+description: Use the axa-task CLI to pick up, track, and finish work in a project that stores tasks under .axa/. Trigger this skill when a repository contains .axa/SKILL.md, when the user asks you to work on axa tasks, or when you need to coordinate with other workers without duplicating effort.
 ---
 
 # axa 行动指南
@@ -18,26 +18,26 @@ description: Use the axa CLI to pick up, track, and finish work in a project tha
 
 ## 开始工作
 
-1. 在包含 `.axa/` 的项目目录内执行命令；axa 会自动查找当前项目的任务。
+1. 在包含 `.axa/` 的项目目录内执行命令；axa 会自动查找当前项目的任务。worker 只使用 `axa-task`。
 2. 查看可认领任务：
    ```bash
-   axa list --status todo --json
+   axa-task list --status todo --json
    ```
 3. 认领任务时提交你的平台名（如 qoder、trae、codex）。CLI 会生成本轮唯一的 agent id
    （`{平台}_{yy-MM-dd_HH:mm:ss.SSS}`），写入 `task.json` 的 `claimedBy` 作为锁：
    ```bash
-   axa claim 003 --agent qoder     # 指定任务
-   axa claim --next --agent qoder  # 认领优先级最高的 todo 任务
+   axa-task claim 003 --agent qoder     # 指定任务
+   axa-task claim --next --agent qoder  # 认领优先级最高的 todo 任务
    ```
    每次 claim 都会得到新的 agent id；不要手工修改 `claimedBy`。
 4. 每轮执行前（首次或迭代）都必须重新获取任务详情，并从头按序号阅读全部会话记录：
    ```bash
-   axa show 003
+   axa-task show 003
    ```
    不要沿用上一轮或缓存中的任务内容。Boss 可能在你上次读取后追加或修改了要求，一律以本次读取到的最新内容为准。
 5. 无法继续时立即释放，不要长期占用：
    ```bash
-   axa release 003
+   axa-task release 003
    ```
    doing 超过 7 天未完成会被自动释放回 todo。
 
@@ -47,14 +47,14 @@ description: Use the axa CLI to pick up, track, and finish work in a project tha
 2. 把本轮实现说明与验证证据写入一个 Markdown 文件，例如 `/tmp/axa-summary-003.md`。
 3. 追加汇总（用 `--title` 一句话概括本轮核心改动，它会成为会话记录标题；agent id 自动使用当前 `claimedBy` 并写入 frontmatter）：
    ```bash
-   axa summary 003 --title "删除 register，改为 claim 时签发 agent id" --file /tmp/axa-summary-003.md
+   axa-task summary 003 --title "删除 register，改为 claim 时签发 agent id" --file /tmp/axa-summary-003.md
    ```
 4. 标记完成（同时清除 `claimedBy` 锁）：
    ```bash
-   axa done 003
+   axa-task done 003
    ```
 
-`axa done` 要求最新一条会话是本轮 worker 汇总，否则会报错并提示先执行 `axa summary`。
+`axa-task done` 要求最新一条会话是本轮 worker 汇总，否则会报错并提示先执行 `axa-task summary`。
 需要人工 review 的任务会进入 `.axa/tasks/review/`，由 Boss 在控制台验收；worker 不得自行验收。
 
 ## 迭代
@@ -68,7 +68,7 @@ Boss 验收不通过或在任务完成后追加需求时，会在控制台追加
 范围外的工作先放入 backlog，等待 Boss 批准，不要混入当前改动：
 
 ```bash
-axa create "补充部署文档" --priority P2 --description "验收标准..."
+axa-task create "补充部署文档" --priority P2 --description "验收标准..."
 ```
 
 Boss 在控制台批准后，任务才会进入 `todo`。
@@ -80,12 +80,12 @@ Boss 在控制台批准后，任务才会进入 `todo`。
 
 - 先在主工作区认领任务，再为任务创建独立 worktree：
   ```bash
-  axa claim --next --agent qoder  # 假设认领到 014
+  axa-task claim --next --agent qoder  # 假设认领到 014
   git worktree add ../my-project-014 -b axa/014
   ```
-- 在 worktree 中编码、测试与提交。不要在 worktree 里执行 `axa claim` / `axa done`：
+- 在 worktree 中编码、测试与提交。不要在 worktree 里执行 `axa-task claim` / `axa-task done`：
   那里是 `.axa/` 的另一份副本，会让任务状态分叉；需要在 worktree 内更新状态时，加 `--project <主工作区路径>`。
-- 合并回主分支后，回到主工作区执行 `axa done <id>`，再清理：`git worktree remove ../my-project-014`。
+- 合并回主分支后，回到主工作区执行 `axa-task done <id>`，再清理：`git worktree remove ../my-project-014`。
 - 一个任务对应一个分支或 worktree，不要在同一未提交工作区里同时推进多个任务。
 
 ## 规则
@@ -104,12 +104,12 @@ Boss 在控制台批准后，任务才会进入 `todo`。
 
 | 需求                 | 命令                                                       |
 | ------------------ | -------------------------------------------------------- |
-| 查看可认领任务            | `axa list --status todo --json`                          |
-| 查看完整看板             | `axa board`                                              |
-| 认领任务并生成本轮 agent id | `axa claim <id> --agent <platform>`                      |
-| 认领最高优先级任务          | `axa claim --next --agent <platform>`                    |
-| 释放任务               | `axa release <id>`                                       |
-| 写入本轮汇总             | `axa summary <id> --title "核心改动" --file <path>`          |
-| 标记完成               | `axa done <id>`                                          |
-| 查看任务与全部会话          | `axa show <id>`                                          |
-| 新建 backlog 任务      | `axa create "<title>" --priority P1 --description "..."` |
+| 查看可认领任务            | `axa-task list --status todo --json`                          |
+| 查看完整看板             | `axa-task board`                                              |
+| 认领任务并生成本轮 agent id | `axa-task claim <id> --agent <platform>`                      |
+| 认领最高优先级任务          | `axa-task claim --next --agent <platform>`                    |
+| 释放任务               | `axa-task release <id>`                                       |
+| 写入本轮汇总             | `axa-task summary <id> --title "核心改动" --file <path>`          |
+| 标记完成               | `axa-task done <id>`                                          |
+| 查看任务与全部会话          | `axa-task show <id>`                                          |
+| 新建 backlog 任务      | `axa-task create "<title>" --priority P1 --description "..."` |

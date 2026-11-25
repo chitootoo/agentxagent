@@ -8,7 +8,7 @@ import {
 } from "@contagxt/axa-core";
 import type { Command } from "commander";
 import pc from "picocolors";
-import { printProjects } from "../format.js";
+import { printProjects } from "../../format.js";
 
 interface AddOptions {
   name?: string;
@@ -23,10 +23,8 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-export function registerProjectsCommand(program: Command): void {
-  const projects = program.command("projects").description("Manage registered axa projects");
-
-  projects
+function registerProjectListCommand(program: Command): void {
+  program
     .command("list")
     .alias("ls")
     .description("List registered projects")
@@ -39,8 +37,10 @@ export function registerProjectsCommand(program: Command): void {
       }
       printProjects(list);
     });
+}
 
-  projects
+function registerProjectAddCommand(program: Command): void {
+  program
     .command("add")
     .description("Register an existing project, or initialize it with --init")
     .argument("<path>")
@@ -54,8 +54,10 @@ export function registerProjectsCommand(program: Command): void {
       });
       console.log(`${pc.green("✓")} Registered ${pc.bold(project.id)} at ${project.path}`);
     });
+}
 
-  projects
+function registerProjectRemoveCommand(program: Command): void {
+  program
     .command("remove")
     .alias("rm")
     .description("Unregister a project (does not touch its files)")
@@ -64,8 +66,10 @@ export function registerProjectsCommand(program: Command): void {
       const project = await removeRegisteredProject(id);
       console.log(`${pc.green("✓")} Removed ${pc.bold(project.name)} from the registry.`);
     });
+}
 
-  projects
+function registerProjectRestoreCommand(program: Command): void {
+  program
     .command("restore")
     .description("Clone a missing project checkout from its project.ref")
     .argument("[id]")
@@ -104,8 +108,10 @@ export function registerProjectsCommand(program: Command): void {
       }
       if (failed > 0) process.exitCode = 1;
     });
+}
 
-  projects
+function registerProjectUseCommand(program: Command): void {
+  program
     .command("use")
     .description("Set the default project used outside a project directory")
     .argument("<id>")
@@ -113,4 +119,16 @@ export function registerProjectsCommand(program: Command): void {
       const project = await setDefaultProject(id);
       console.log(`${pc.green("✓")} Default project: ${pc.bold(project.id)}`);
     });
+}
+
+export function registerProjectActions(program: Command): void {
+  registerProjectListCommand(program);
+  registerProjectAddCommand(program);
+  registerProjectRemoveCommand(program);
+  registerProjectRestoreCommand(program);
+  registerProjectUseCommand(program);
+}
+
+export function registerProjectsGroup(program: Command): void {
+  registerProjectActions(program.command("projects").description("Manage registered axa projects"));
 }

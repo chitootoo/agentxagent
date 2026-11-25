@@ -1,45 +1,12 @@
-import { isAxaError } from "@contagxt/axa-core";
-import { Command } from "commander";
-import pc from "picocolors";
-import { registerClaimCommand } from "./commands/claim.js";
-import { registerCommentCommand } from "./commands/comment.js";
-import { registerCreateCommand } from "./commands/create.js";
-import { registerDoneCommand } from "./commands/done.js";
-import { registerInitCommand } from "./commands/init.js";
-import { registerListCommand } from "./commands/list.js";
-import { registerProjectsCommand } from "./commands/projects.js";
-import { registerReleaseCommand } from "./commands/release.js";
-import { registerShowCommand } from "./commands/show.js";
-import { registerSummaryCommand } from "./commands/summary.js";
+import { registerInitCommand } from "./commands/project/init.js";
+import { registerProjectsGroup } from "./commands/project/projects.js";
+import { registerTaskCommands } from "./commands/task/index.js";
+import { createProgram, runProgram } from "./program.js";
 
-const program = new Command();
+const program = createProgram("axa", "Local-first task management for humans and AI agents");
 
-program
-  .name("axa")
-  .description("Local-first task management for humans and AI agents")
-  .version("0.1.0")
-  .showHelpAfterError();
-
+registerTaskCommands(program);
 registerInitCommand(program);
-registerProjectsCommand(program);
-registerCreateCommand(program);
-registerListCommand(program);
-registerShowCommand(program);
-registerClaimCommand(program);
-registerCommentCommand(program);
-registerSummaryCommand(program);
-registerReleaseCommand(program);
-registerDoneCommand(program);
+registerProjectsGroup(program);
 
-program.parseAsync(process.argv).catch((error: unknown) => {
-  const message = isAxaError(error)
-    ? error.message
-    : error instanceof Error
-      ? error.message
-      : String(error);
-  console.error(`${pc.red("axa:")} ${message}`);
-  if (process.env.DEBUG) {
-    console.error(error);
-  }
-  process.exitCode = 1;
-});
+runProgram(program, "axa");

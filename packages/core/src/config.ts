@@ -111,7 +111,7 @@ export async function registerProject(input: RegisterProjectInput): Promise<Proj
   if (!input.initialize && !(await isAxaProject(projectPath))) {
     throw new AxaError(
       "INVALID_PROJECT",
-      `${projectPath} is not an axa project. Enable initialization or run "axa init".`,
+      `${projectPath} is not an axa project. Enable initialization or run "axa-project init".`,
     );
   }
 
@@ -280,7 +280,7 @@ export async function resolveCliProject(input?: string): Promise<string> {
       if (error instanceof AxaError && error.code === "NOT_FOUND") {
         throw new AxaError(
           "INVALID_PROJECT",
-          `Unknown project "${input}". Pass a valid path or register it with "axa projects add".`,
+          `Unknown project "${input}". Pass a valid path or register it with "axa-project add".`,
         );
       }
       throw error;
@@ -304,6 +304,6 @@ export async function resolveCliProject(input?: string): Promise<string> {
 
   throw new AxaError(
     "INVALID_PROJECT",
-    'No project selected. Run "axa init" here or pass --project <path|id>.',
+    'No project selected. Run "axa-project init" here or pass --project <path|id>.',
   );
 }

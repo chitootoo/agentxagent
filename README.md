@@ -30,6 +30,18 @@ pnpm build
 
 worker 侧的认领、执行与提交汇总流程见 [worker 行动指南](packages/core/src/prompts/worker-skill.md)。
 
+### 命令入口
+
+`@contagxt/axa-cli` 一个包提供三个命令，共享同一份 core 实现：
+
+| 命令 | 用途 | 主要使用者 |
+| --- | --- | --- |
+| `axa` | 全量命令，兼容入口 | Boss、运维 |
+| `axa-task` | 任务协议：`list`/`show`/`board`/`create`/`claim`/`summary`/`release`/`done` | worker |
+| `axa-project` | 项目运维：`init`、`add`/`list`/`remove`/`restore`/`use` | Boss、运维 |
+
+worker 只需要 `axa-task`；`axa` 保留用于人工操作与脚本兼容。
+
 启动网页控制台：
 
 ```bash
@@ -132,9 +144,9 @@ macOS / iOS Safari 可“分享 → 添加到主屏幕”，Android Chrome 可�
 整个 `~/.contagxt/axa` 目录可以原样复制：`projects/<id>/` 下的任务数据随目录一起迁移，`project.ref` 里的路径按 `~` 记录，因此只要新机器保持相同的相对目录结构即可直接命中。工作树不存在时：
 
 ```bash
-axa projects list          # 缺失的项目标记为 [missing]
-axa projects restore <id>  # 按 project.ref 的 remote 重新 clone/checkout，并重建 .axa 链接
-axa projects restore --all # 恢复所有缺失项目
+axa-project list          # 缺失的项目标记为 [missing]
+axa-project restore <id>  # 按 project.ref 的 remote 重新 clone/checkout，并重建 .axa 链接
+axa-project restore --all # 恢复所有缺失项目
 ```
 
 恢复使用 refer 的 `replayRef`（以 `project.ref` 所在目录为 baseDir，不修改进程 cwd），只创建 checkout、不触碰清单里的旧链接，随后由 `ensureManagedProject` 重建 `<project>/.axa`。非 git 项目没有 remote，无法自动恢复，命令会提示手动复制到清单记录的路径。
@@ -145,7 +157,7 @@ axa projects restore --all # 恢复所有缺失项目
 packages/
 ├── proto/     # protobuf 定义、buf 配置、生成的 TaskService
 ├── core/      # 文件布局、状态机、任务锁、惰性维护与项目注册表
-├── cli/       # axa 命令
+├── cli/       # axa / axa-task / axa-project 命令
 └── console/   # Next.js 控制台与 Connect RPC 服务端
 .axa/          # 符号链接：~/.contagxt/axa/projects/<id>/.axa
 ```

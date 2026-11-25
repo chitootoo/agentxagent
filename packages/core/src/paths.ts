@@ -59,7 +59,7 @@ export async function assertAxaProject(projectRoot: string): Promise<void> {
   if (!(await isAxaProject(projectRoot))) {
     throw new AxaError(
       "INVALID_PROJECT",
-      `${projectRoot} is not an axa project. Run "axa init" there first.`,
+      `${projectRoot} is not an axa project. Run "axa-project init" there first.`,
     );
   }
 }
@@ -102,7 +102,7 @@ export async function resolveProjectRoot(input?: string): Promise<string> {
   if (!found) {
     throw new AxaError(
       "INVALID_PROJECT",
-      'No .axa/ directory found here or in a parent directory. Run "axa init" first.',
+      'No .axa/ directory found here or in a parent directory. Run "axa-project init" first.',
     );
   }
   return found;

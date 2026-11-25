@@ -258,7 +258,7 @@ export function ProjectsView() {
             </span>
             <h3>还没有纳管任何项目</h3>
             <p>
-              在已有项目执行 <code>axa init</code>，或点击右上角添加项目。
+              在已有项目执行 <code>axa-project init</code>，或点击右上角添加项目。
             </p>
             <button className="button secondary" type="button" onClick={() => setFormOpen(true)}>
               添加第一个项目

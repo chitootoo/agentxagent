@@ -1,7 +1,7 @@
 import { completeTask } from "@contagxt/axa-core";
 import type { Command } from "commander";
 import pc from "picocolors";
-import { type ProjectOption, resolveProject } from "../context.js";
+import { type ProjectOption, resolveProject } from "../../context.js";
 
 export function registerDoneCommand(program: Command): void {
   program

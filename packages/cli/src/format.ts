@@ -99,7 +99,7 @@ export function printTask(task: Task): void {
 
 export function printProjects(projects: ListProjectsResult[]): void {
   if (projects.length === 0) {
-    console.log(pc.dim('No projects registered. Run "axa projects add <path>".'));
+    console.log(pc.dim('No projects registered. Run "axa-project add <path>".'));
     return;
   }
   for (const project of projects) {
@@ -111,7 +111,7 @@ export function printProjects(projects: ListProjectsResult[]): void {
   }
   if (projects.some((project) => !project.exists)) {
     console.log(
-      pc.dim('\nMissing checkouts can be cloned again with "axa projects restore --all".'),
+      pc.dim('\nMissing checkouts can be cloned again with "axa-project restore --all".'),
     );
   }
 }

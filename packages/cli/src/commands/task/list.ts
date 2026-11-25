@@ -2,8 +2,8 @@ import type { TaskPriority, TaskStatus } from "@contagxt/axa-core";
 import { scanTasks, TASK_PRIORITIES, TASK_STATUSES } from "@contagxt/axa-core";
 import type { Command } from "commander";
 import pc from "picocolors";
-import { type ProjectOption, resolveProject } from "../context.js";
-import { printBoard, printTaskTable, taskJson } from "../format.js";
+import { type ProjectOption, resolveProject } from "../../context.js";
+import { printTaskTable, taskJson } from "../../format.js";
 
 interface ListOptions extends ProjectOption {
   status?: string;
@@ -62,20 +62,6 @@ export function registerListCommand(program: Command): void {
       }
       console.log(`${pc.bold(projectRoot)} ${pc.dim(`(${tasks.length} tasks)`)}`);
       printTaskTable(tasks);
-      for (const issue of issues) {
-        console.error(`${pc.yellow("warning:")} ${issue.filePath}: ${issue.message}`);
-      }
-    });
-
-  program
-    .command("board")
-    .description("Show the task board grouped by state")
-    .option("-p, --project <path|id>", "project path or registered id")
-    .action(async (options: ProjectOption) => {
-      const projectRoot = await resolveProject(options);
-      const { tasks, issues } = await scanTasks(projectRoot);
-      console.log(pc.bold(projectRoot));
-      printBoard(tasks);
       for (const issue of issues) {
         console.error(`${pc.yellow("warning:")} ${issue.filePath}: ${issue.message}`);
       }

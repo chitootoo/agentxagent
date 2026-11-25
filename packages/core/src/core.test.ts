@@ -320,7 +320,7 @@ describe("task lifecycle", () => {
       agentPlatform: "worker-a",
     });
     await expect(completeTask(projectRoot, created.id, claimed.claimedBy)).rejects.toThrow(
-      /axa summary .* --file/u,
+      /axa-task summary .* --file/u,
     );
   });
 

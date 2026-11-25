@@ -1177,7 +1177,7 @@ export async function completeTask(
     if (!hasAgentSummary(tx.task)) {
       throw new AxaError(
         "INVALID_TASK",
-        `Task ${tx.task.id} has no agent summary for this round. Run "axa summary ${tx.task.id} --file <path>" first.`,
+        `Task ${tx.task.id} has no agent summary for this round. Run "axa-task summary ${tx.task.id} --file <path>" first.`,
       );
     }
     if (!options.force && actor && tx.task.claimedBy && tx.task.claimedBy !== actor) {

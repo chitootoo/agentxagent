@@ -1,8 +1,8 @@
 import { claimTask } from "@contagxt/axa-core";
 import type { Command } from "commander";
 import pc from "picocolors";
-import { type ProjectOption, resolveProject } from "../context.js";
-import { taskJson } from "../format.js";
+import { type ProjectOption, resolveProject } from "../../context.js";
+import { taskJson } from "../../format.js";
 
 interface ClaimOptions extends ProjectOption {
   next?: boolean;

@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { AxaError, summarizeTask } from "@contagxt/axa-core";
 import type { Command } from "commander";
 import pc from "picocolors";
-import { type ProjectOption, resolveProject } from "../context.js";
+import { type ProjectOption, resolveProject } from "../../context.js";
 
 interface SummaryOptions extends ProjectOption {
   file: string;
