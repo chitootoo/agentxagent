@@ -228,7 +228,6 @@ export const taskServiceImpl: ServiceImpl<typeof TaskService> = {
   async registerProject(req: RegisterProjectRequest): Promise<RegisterProjectResponse> {
     const project = await registerProject({
       path: req.path,
-      ...(req.name.trim() ? { name: req.name.trim() } : {}),
       ...(req.initialize ? { initialize: true } : {}),
     });
     const summary = await requireProjectSummary(project.id);

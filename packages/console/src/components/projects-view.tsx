@@ -10,11 +10,10 @@ import { ArrowRightIcon, PlusIcon, ProjectsIcon, TrashIcon } from "./icons";
 
 interface ProjectForm {
   path: string;
-  name: string;
   initialize: boolean;
 }
 
-const EMPTY_FORM: ProjectForm = { path: "", name: "", initialize: false };
+const EMPTY_FORM: ProjectForm = { path: "", initialize: false };
 
 export function ProjectsView() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -66,7 +65,6 @@ export function ProjectsView() {
     try {
       const response = await taskClient.registerProject({
         path: form.path.trim(),
-        name: form.name.trim(),
         initialize: form.initialize,
       });
       if (!response.project) {
@@ -189,14 +187,6 @@ export function ProjectsView() {
                 onChange={(event) => setForm({ ...form, path: event.target.value })}
               />
               <small>axa 会在该目录读取或创建 .axa/ 目录。</small>
-            </label>
-            <label className="field">
-              <span>显示名称</span>
-              <input
-                placeholder="可选，默认取目录名"
-                value={form.name}
-                onChange={(event) => setForm({ ...form, name: event.target.value })}
-              />
             </label>
             <label className="check-field">
               <input

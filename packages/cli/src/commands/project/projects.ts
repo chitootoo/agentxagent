@@ -11,7 +11,6 @@ import pc from "picocolors";
 import { printProjects } from "../../format.js";
 
 interface AddOptions {
-  name?: string;
   init?: boolean;
 }
 
@@ -44,12 +43,10 @@ function registerProjectAddCommand(program: Command): void {
     .command("add")
     .description("Register an existing project, or initialize it with --init")
     .argument("<path>")
-    .option("-n, --name <name>", "display name")
     .option("--init", "initialize .axa/ if the directory is not managed yet")
     .action(async (pathArg: string, options: AddOptions) => {
       const project = await registerProject({
         path: pathArg,
-        ...(options.name ? { name: options.name } : {}),
         ...(options.init ? { initialize: true } : {}),
       });
       console.log(`${pc.green("✓")} Registered ${pc.bold(project.id)} at ${project.path}`);

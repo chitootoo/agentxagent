@@ -134,10 +134,10 @@ macOS / iOS Safari 可“分享 → 添加到主屏幕”，Android Chrome 可�
 ```
 ~/.contagxt/axa/projects/<id>/
 ├── project.ref      # refer 清单：git 项目记录 remote + local，其余记录 .axa 链接
-└── .axa/            # 任务、SKILL.md、tasks/README.md 与项目 config.json
+└── .axa/            # 任务、SKILL.md 与 tasks/README.md
 ```
 
-`project.ref` 由 `@contagxt/refer` 的写入器生成、读取器解析，不使用自定义字段。项目是带 `origin` 的 git 工作树时，清单记录 `remote` 与 `local`（检出路径），迁移或换机后执行 `refer get project.ref` 即可重新 clone/checkout 该项目；非 git 项目则记录 `local: .axa` 与 `symlink: <project>/.axa`。项目根目录的 `.axa` 始终由 refer 的 `applyRef` 建立为指向管理目录的符号链接，worker 与 CLI 继续按 `<project>/.axa` 读写。项目注册表以 `project.ref` 为准；`~/.contagxt/axa/config.json` 只保存 `defaultProjectId`，项目名称等元数据保存在 `.axa/config.json`。
+`project.ref` 由 `@contagxt/refer` 的写入器生成、读取器解析，不使用自定义字段。项目是带 `origin` 的 git 工作树时，清单记录 `remote` 与 `local`（检出路径），迁移或换机后执行 `refer get project.ref` 即可重新 clone/checkout 该项目；非 git 项目则记录 `local: .axa` 与 `symlink: <project>/.axa`。项目根目录的 `.axa` 始终由 refer 的 `applyRef` 建立为指向管理目录的符号链接，worker 与 CLI 继续按 `<project>/.axa` 读写。项目注册表以 `project.ref` 为准；`~/.contagxt/axa/config.json` 只保存 `defaultProjectId`。项目名称取项目目录名，项目 id 可从 `<project>/.axa` 符号链接的目标推导，不额外保存项目级配置。
 
 #### 迁移到另一台机器
 

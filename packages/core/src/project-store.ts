@@ -16,7 +16,6 @@ import {
 import { AxaError } from "./errors.js";
 import { getProjectsRoot } from "./home.js";
 import { AXA_DIR, isAxaProject, pathExists, projectAxaDir } from "./paths.js";
-import { readProjectConfigAt } from "./project-id.js";
 import { isProjectId } from "./project-ids.js";
 import type { ProjectConfig } from "./types.js";
 
@@ -75,6 +74,18 @@ async function describeLink(path: string): Promise<LinkState> {
 
 function isUnderProjectsRoot(path: string): boolean {
   return path.startsWith(`${getProjectsRoot()}${sep}`);
+}
+
+/** Recover a project id from the `<project>/.axa` symlink into the management folder. */
+export async function projectIdFromLink(projectRoot: string): Promise<string | undefined> {
+  const state = await describeLink(projectAxaDir(projectRoot));
+  if (state.kind !== "symlink" || !state.target || basename(state.target) !== AXA_DIR) {
+    return undefined;
+  }
+  const manageDir = dirname(state.target);
+  if (!isUnderProjectsRoot(manageDir)) return undefined;
+  const id = basename(manageDir);
+  return isProjectId(id) ? id : undefined;
 }
 
 /**
@@ -188,12 +199,11 @@ async function readProjectRefState(projectId: string): Promise<ProjectRefState |
         : dirname(expandPath(link, session.env));
   if (projectPath === undefined) return undefined;
 
-  const local = await readProjectConfigAt(managedAxaDir(projectId));
   return {
     remote: manifest.remote,
     project: {
       id: projectId,
-      name: local?.name || basename(projectPath),
+      name: basename(projectPath),
       path: projectPath,
       addedAt,
     },

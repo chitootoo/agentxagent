@@ -42,7 +42,6 @@ import {
   readActivityEntries,
   readConfig,
   readProjectInfo,
-  readProjectLocalConfig,
   registerProject,
   releaseStaleTasks,
   releaseTask,
@@ -56,7 +55,6 @@ import {
   taskLink,
   toAbsolutePath,
   updateTask,
-  writeProjectLocalConfig,
 } from "./index.js";
 
 let workspace: string;
@@ -87,7 +85,7 @@ beforeEach(async () => {
   projectRoot = join(workspace, "demo");
   axaHome = join(workspace, "home");
   process.env.AXA_HOME = axaHome;
-  await initProject({ projectRoot, name: "Demo Project" });
+  await initProject({ projectRoot });
 });
 
 afterEach(async () => {
@@ -724,7 +722,7 @@ describe("archive lifecycle", () => {
 
 describe("project registry", () => {
   it("registers a project with a unique id and a project.ref", async () => {
-    const project = await registerProject({ path: projectRoot, name: "Demo" });
+    const project = await registerProject({ path: projectRoot });
     expect(isProjectId(project.id)).toBe(true);
 
     const manageDir = join(axaHome, "projects", project.id);
@@ -733,8 +731,10 @@ describe("project registry", () => {
     expect(ref).toContain("local: .axa");
     expect(ref).toContain(`symlink: ${join(projectRoot, ".axa")}`);
     expect(ref).not.toContain("# name:");
-    expect((await getRegisteredProject(project.id)).name).toBe("Demo");
-    expect((await readProjectLocalConfig(projectRoot))?.name).toBe("Demo");
+    expect((await getRegisteredProject(project.id)).name).toBe("demo");
+    await expect(lstat(join(managedAxaDir(project.id), "config.json"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
 
     expect((await lstat(join(projectRoot, ".axa"))).isSymbolicLink()).toBe(true);
     expect(await readlink(join(projectRoot, ".axa"))).toBe(managedAxaDir(project.id));
@@ -749,7 +749,7 @@ describe("project registry", () => {
       stdio: "ignore",
     });
 
-    const project = await registerProject({ path: projectRoot, name: "Demo" });
+    const project = await registerProject({ path: projectRoot });
     const ref = await readFile(join(axaHome, "projects", project.id, "project.ref"), "utf8");
     const realRoot = await realpath(projectRoot);
 
@@ -762,10 +762,10 @@ describe("project registry", () => {
 
   it("registers multiple projects and unregisters without deleting data", async () => {
     const secondRoot = join(workspace, "second");
-    await initProject({ projectRoot: secondRoot, name: "Second" });
+    await initProject({ projectRoot: secondRoot });
 
-    const first = await registerProject({ path: projectRoot, name: "Demo" });
-    const second = await registerProject({ path: secondRoot, name: "Second" });
+    const first = await registerProject({ path: projectRoot });
+    const second = await registerProject({ path: secondRoot });
     expect(first.id).not.toBe(second.id);
     expect((await readConfig()).defaultProjectId).toBe(first.id);
 
@@ -786,7 +786,6 @@ describe("project registry", () => {
     const fresh = join(workspace, "fresh");
     const project = await registerProject({
       path: fresh,
-      name: "Fresh",
       initialize: true,
     });
     expect(isProjectId(project.id)).toBe(true);
@@ -795,7 +794,7 @@ describe("project registry", () => {
   });
 
   it("honors AXA_HOME when switching registries", async () => {
-    await registerProject({ path: projectRoot, name: "Demo" });
+    await registerProject({ path: projectRoot });
     expect(await listRegisteredProjects()).toHaveLength(1);
 
     process.env.AXA_HOME = join(workspace, "other-home");
@@ -827,41 +826,35 @@ describe("project storage", () => {
   it("moves an existing in-project .axa directory into the management folder", async () => {
     await createTask({ projectRoot, title: "Existing", status: "todo" });
 
-    const project = await registerProject({ path: projectRoot, name: "Demo" });
+    const project = await registerProject({ path: projectRoot });
 
     expect(await readdir(managedAxaDir(project.id))).toContain("tasks");
     expect((await listTasks(projectRoot)).map((task) => task.title)).toContain("Existing");
     expect((await lstat(join(projectRoot, ".axa"))).isSymbolicLink()).toBe(true);
   });
 
-  it("replaces a legacy project id with a unique id", async () => {
-    await writeProjectLocalConfig(projectRoot, {
-      version: 1,
-      projectId: "github.com/acme/demo",
-    });
+  it("recovers the id from the .axa symlink when the registry entry is lost", async () => {
+    const first = await registerProject({ path: projectRoot });
+    await removeRegisteredProject(first.id);
+    expect(await listRegisteredProjects()).toHaveLength(0);
 
-    const registered = await registerProject({ path: projectRoot, name: "Demo" });
+    const again = await registerProject({ path: projectRoot });
 
-    expect(isProjectId(registered.id)).toBe(true);
-    expect(registered.id).not.toBe("github.com/acme/demo");
-    expect((await readProjectLocalConfig(projectRoot))?.projectId).toBe(registered.id);
-    expect(await readdir(managedAxaDir(registered.id))).toContain("tasks");
+    expect(again.id).toBe(first.id);
+    expect(await readdir(managedAxaDir(again.id))).toContain("tasks");
   });
 
-  it("keeps the id stable and updates metadata on re-registration", async () => {
-    const first = await registerProject({ path: projectRoot, name: "Demo" });
-    expect((await readProjectLocalConfig(projectRoot))?.projectId).toBe(first.id);
+  it("keeps the id stable on re-registration", async () => {
+    const first = await registerProject({ path: projectRoot });
+    const again = await registerProject({ path: projectRoot });
 
-    const again = await registerProject({ path: projectRoot, name: "Demo renamed" });
     expect(again.id).toBe(first.id);
-    expect(again.name).toBe("Demo renamed");
-
-    expect((await readProjectLocalConfig(projectRoot))?.name).toBe("Demo renamed");
-    expect((await listRegisteredProjects())[0]?.name).toBe("Demo renamed");
+    expect(again.name).toBe("demo");
+    expect((await listRegisteredProjects())[0]?.name).toBe("demo");
   });
 
   it("remaps a moved project and keeps the symlink working", async () => {
-    const registered = await registerProject({ path: projectRoot, name: "Demo" });
+    const registered = await registerProject({ path: projectRoot });
     const movedRoot = join(workspace, "moved-demo");
     await rename(projectRoot, movedRoot);
 
@@ -875,10 +868,10 @@ describe("project storage", () => {
 
   it("gives every registered project its own management folder", async () => {
     const secondRoot = join(workspace, "second");
-    await initProject({ projectRoot: secondRoot, name: "Second" });
+    await initProject({ projectRoot: secondRoot });
 
-    const first = await registerProject({ path: projectRoot, name: "Demo" });
-    const second = await registerProject({ path: secondRoot, name: "Second" });
+    const first = await registerProject({ path: projectRoot });
+    const second = await registerProject({ path: secondRoot });
 
     expect(managedAxaDir(first.id)).not.toBe(managedAxaDir(second.id));
     expect(await readlink(join(projectRoot, ".axa"))).toBe(managedAxaDir(first.id));
@@ -902,10 +895,10 @@ describe("project restore", () => {
     await rm(projectRoot, { recursive: true, force: true });
     execFileSync("git", ["clone", "--quiet", origin, projectRoot], { stdio: "ignore" });
     git(["remote", "set-url", "origin", `file://${origin}`], projectRoot);
-    await initProject({ projectRoot, name: "Demo" });
+    await initProject({ projectRoot });
 
     await createTask({ projectRoot, title: "Survives migration", status: "todo" });
-    const project = await registerProject({ path: projectRoot, name: "Demo" });
+    const project = await registerProject({ path: projectRoot });
     const ref = await readFile(join(axaHome, "projects", project.id, "project.ref"), "utf8");
     expect(ref).toContain(`remote: file://${origin}`);
 
@@ -928,7 +921,7 @@ describe("project restore", () => {
   });
 
   it("reports local-only projects that cannot be restored", async () => {
-    const project = await registerProject({ path: projectRoot, name: "Demo" });
+    const project = await registerProject({ path: projectRoot });
     await rm(projectRoot, { recursive: true, force: true });
 
     await expect(restoreProject(project.id)).rejects.toThrow(/no git remote/u);

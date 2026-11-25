@@ -57,20 +57,11 @@ export {
   tasksReadmePath,
   toAbsolutePath,
 } from "./paths.js";
-export type { ProjectIdentity, ProjectLocalConfig } from "./project-id.js";
-export {
-  PROJECT_CONFIG_FILE,
-  projectConfigPath,
-  readProjectConfigAt,
-  readProjectLocalConfig,
-  resolveProjectIdentity,
-  writeProjectConfigAt,
-  writeProjectLocalConfig,
-} from "./project-id.js";
 export { isProjectId, newProjectId } from "./project-ids.js";
 export {
   managedAxaDir,
   PROJECT_REF_FILE,
+  projectIdFromLink,
   projectManageDir,
   projectRefPath,
   readProjectRef,

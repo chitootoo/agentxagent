@@ -71,6 +71,11 @@ function isGemini(baseUrl: string): boolean {
   return baseUrl.toLowerCase().includes("generativelanguage.googleapis.com");
 }
 
+/** Workers AI rejects `content: null` on assistant messages that only carry tool calls. */
+function isCloudflareWorkersAi(baseUrl: string): boolean {
+  return baseUrl.includes("api.cloudflare.com") && !baseUrl.includes("gateway.ai.cloudflare.com");
+}
+
 /** Accept both the native Gemini URL and the OpenAI-compatible one, then normalize. */
 function geminiBaseUrl(baseUrl: string): string {
   const trimmed = baseUrl
@@ -109,7 +114,9 @@ function modelFor(
           maxTokensField: "max_tokens" as const,
         },
       }
-    : {};
+    : isCloudflareWorkersAi(compatibleBaseUrl)
+      ? { compat: { requiresNonNullAssistantContent: true } }
+      : {};
   return {
     ...common,
     ...compat,
@@ -119,7 +126,7 @@ function modelFor(
   };
 }
 
-function buildModel(settings: SecretarySettings): Model<Api> {
+export function buildModel(settings: SecretarySettings): Model<Api> {
   return isGemini(settings.baseUrl)
     ? modelFor(settings, geminiBaseUrl(settings.baseUrl), "google-generative-ai")
     : modelFor(settings, settings.baseUrl, "openai-completions");

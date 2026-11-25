@@ -14,11 +14,11 @@ import {
   SKILL_FILE,
   TASKS_README_FILE,
 } from "./paths.js";
-import { readProjectLocalConfig, writeProjectLocalConfig } from "./project-id.js";
 import { isProjectId, newProjectId } from "./project-ids.js";
 import {
   ensureManagedProject,
   listProjectRefs,
+  projectIdFromLink,
   readProjectRef,
   removeProjectRef,
 } from "./project-store.js";
@@ -92,16 +92,16 @@ function samePath(left: string, right: string): boolean {
 
 export interface RegisterProjectInput {
   path: string;
-  name?: string;
   initialize?: boolean;
 }
 
 /**
  * Register a project under `$AXA_HOME/projects/<id>/`.
  *
- * The project id is a fresh UUID, persisted in the project's `.axa/config.json`.
- * The real `.axa/` directory lives in the management folder; `<project>/.axa`
- * becomes a symlink to it so workers keep using the familiar path.
+ * The project id is recovered from an existing `<project>/.axa` symlink, or a
+ * fresh UUID is generated. The real `.axa/` directory lives in the management
+ * folder; `<project>/.axa` becomes a symlink to it so workers keep using the
+ * familiar path.
  */
 export async function registerProject(input: RegisterProjectInput): Promise<ProjectConfig> {
   const projectPath = await canonicalProjectPath(input.path);
@@ -115,31 +115,24 @@ export async function registerProject(input: RegisterProjectInput): Promise<Proj
     );
   }
 
-  const local = await readProjectLocalConfig(projectPath);
+  const linkedId = await projectIdFromLink(projectPath);
   const projects = await listProjectRefs();
   const existing =
     projects.find((project) => samePath(project.path, projectPath)) ??
-    (local && isProjectId(local.projectId) ? await readProjectRef(local.projectId) : undefined);
+    (linkedId ? await readProjectRef(linkedId) : undefined);
 
-  const id =
-    existing?.id ?? (local && isProjectId(local.projectId) ? local.projectId : newProjectId());
-  const name = input.name?.trim() || existing?.name || local?.name || basename(projectPath);
+  const id = existing?.id ?? linkedId ?? newProjectId();
   const project: ProjectConfig = {
     id,
-    name,
+    name: basename(projectPath),
     path: projectPath,
     addedAt: existing?.addedAt || new Date().toISOString(),
   };
 
   await ensureManagedProject(project);
   if (input.initialize) {
-    await initProject({ projectRoot: projectPath, ...(input.name ? { name: input.name } : {}) });
+    await initProject({ projectRoot: projectPath });
   }
-  await writeProjectLocalConfig(projectPath, {
-    version: CONFIG_VERSION,
-    projectId: id,
-    name,
-  });
   await mutateConfig((config) => {
     config.defaultProjectId ??= id;
   });
@@ -158,22 +151,15 @@ export async function syncRegisteredProjectPath(
 ): Promise<ProjectConfig | undefined> {
   if (!(await isAxaProject(projectRoot))) return undefined;
   const projectPath = await canonicalProjectPath(projectRoot);
-  const local = await readProjectLocalConfig(projectPath);
+  const linkedId = await projectIdFromLink(projectPath);
   const projects = await listProjectRefs();
   const entry =
-    (local ? projects.find((project) => project.id === local.projectId) : undefined) ??
+    (linkedId ? projects.find((project) => project.id === linkedId) : undefined) ??
     projects.find((project) => samePath(project.path, projectPath));
   if (!entry) return undefined;
 
   const synced: ProjectConfig = { ...entry, path: projectPath };
   await ensureManagedProject(synced);
-  if (local?.projectId !== entry.id || local?.name !== entry.name) {
-    await writeProjectLocalConfig(projectPath, {
-      version: CONFIG_VERSION,
-      projectId: entry.id,
-      name: entry.name,
-    });
-  }
   return synced;
 }
 

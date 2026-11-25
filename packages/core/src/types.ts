@@ -125,7 +125,6 @@ export interface ClaimTaskInput {
 
 export interface InitProjectOptions {
   projectRoot: string;
-  name?: string;
   instruction?: string;
 }
 
